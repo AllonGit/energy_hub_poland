@@ -1,78 +1,83 @@
-import datetime
-import logging
-import aiohttp
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+"""Obsługa sensorów dla PGE Dynamic Energy."""
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from datetime import datetime
 
-_LOGGER = logging.getLogger(__name__)
+from .const import DOMAIN, CONF_MARGIN, CONF_FEE
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    marza = entry.data.get("marza", 0.099)
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+    """Konfiguracja sensorów."""
+    coordinator = hass.data[DOMAIN][entry.entry_id]
     
-    async def async_get_pge_data():
-        today = datetime.date.today().isoformat()
-        # Twój sprawdzony URL z Node-RED
-        url = f"https://datahub.gkpge.pl/api/tge/quote?source=TGE&contract=Fix_1&date_from={today} 00:00:00&date_to={today} 23:59:59&limit=100"
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10) as response:
-                    res = await response.json()
-                    data = res.get("data", [])
-                    
-                    prices = [0.0] * 24
-                    for item in data:
-                        dt_str = item.get("date_time", "")
-                        # Wyciąganie godziny z formatu PGE
-                        hour = int(dt_str.split(" ")[1].split(":")[0])
-                        p_raw = next(a['value'] for a in item['attributes'] if a['name'] == 'price')
-                        # Obliczenie ceny brutto (Twoja logika)
-                        prices[hour] = round((float(p_raw)/1000 + marza) * 1.23, 4)
-                    return prices
-        except Exception as e:
-            raise UpdateFailed(f"Błąd połączenia z PGE DataHub: {e}")
+    margin = entry.data.get(CONF_MARGIN, 0.0)
+    fee = entry.data.get(CONF_FEE, 0.0)
 
-    coordinator = DataUpdateCoordinator(
-        hass, _LOGGER, name="pge_dynamic_prices",
-        update_method=async_get_pge_data,
-        update_interval=datetime.timedelta(minutes=15)
-    )
+    sensors = []
 
-    await coordinator.async_config_entry_first_refresh()
+    # Sensory 00-23
+    for hour in range(24):
+        sensors.append(PGEHourlySensor(coordinator, hour, margin))
 
-    entities = []
-    # 24 sensory godzinne
-    for i in range(24):
-        entities.append(PGEPriceSensor(coordinator, i))
-    # Sensor Min i Max
-    entities.append(PGEMinMaxSensor(coordinator, "min"))
-    entities.append(PGEMinMaxSensor(coordinator, "max"))
+    # Statystyki
+    sensors.append(PGEStatSensor(coordinator, "min", "Cena Minimalna", margin))
+    sensors.append(PGEStatSensor(coordinator, "max", "Cena Maksymalna", margin))
     
-    async_add_entities(entities)
+    # Aktualna cena
+    sensors.append(PGECurrentSensor(coordinator, "aktualna", "Cena Aktualna", margin))
 
-class PGEPriceSensor(SensorEntity):
-    """Sensor dla konkretnej godziny."""
-    def __init__(self, coordinator, hour):
-        self.coordinator = coordinator
-        self._hour = hour
+    async_add_entities(sensors)
+
+class PGESensorBase(CoordinatorEntity, SensorEntity):
+    def __init__(self, coordinator, margin):
+        super().__init__(coordinator)
+        self.margin = margin
+        self._attr_currency = "PLN"
+        self._attr_native_unit_of_measurement = "PLN/kWh"
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_icon = "mdi:currency-eur"
+
+    def calculate_gross(self, net_price):
+        if net_price is None:
+            return 0.0
+        # (Cena giełdowa + Marża) * VAT 23%
+        return round((net_price + self.margin) * 1.23, 4)
+
+class PGEHourlySensor(PGESensorBase):
+    def __init__(self, coordinator, hour, margin):
+        super().__init__(coordinator, margin)
+        self.hour = hour
         self._attr_name = f"PGE Cena {hour:02d}:00"
-        self._attr_unique_id = f"pge_price_h_{hour}"
-        self._attr_native_unit_of_measurement = "zł/kWh"
-        self._attr_device_class = "monetary"
+        self._attr_unique_id = f"{DOMAIN}_price_{hour}"
 
     @property
     def native_value(self):
-        return self.coordinator.data[self._hour]
+        data = self.coordinator.data.get("hourly", {})
+        return self.calculate_gross(data.get(self.hour))
 
-class PGEMinMaxSensor(SensorEntity):
-    """Sensor ceny minimalnej/maksymalnej."""
-    def __init__(self, coordinator, mode):
-        self.coordinator = coordinator
-        self._mode = mode
-        self._attr_name = f"PGE Cena {'Minimalna' if mode == 'min' else 'Maksymalna'}"
-        self._attr_unique_id = f"pge_price_{mode}"
-        self._attr_native_unit_of_measurement = "zł/kWh"
+class PGEStatSensor(PGESensorBase):
+    def __init__(self, coordinator, key, name, margin):
+        super().__init__(coordinator, margin)
+        self.key = key
+        self._attr_name = f"PGE {name}"
+        self._attr_unique_id = f"{DOMAIN}_{key}"
 
     @property
     def native_value(self):
-        return min(self.coordinator.data) if self._mode == "min" else max(self.coordinator.data)
+        val = self.coordinator.data.get(self.key)
+        return self.calculate_gross(val)
+
+class PGECurrentSensor(PGESensorBase):
+    def __init__(self, coordinator, key, name, margin):
+        super().__init__(coordinator, margin)
+        self.key = key
+        self._attr_name = f"PGE {name}"
+        self._attr_unique_id = f"{DOMAIN}_{key}"
+    
+    @property
+    def native_value(self):
+        current_hour = datetime.now().hour
+        data = self.coordinator.data.get("hourly", {})
+        return self.calculate_gross(data.get(current_hour))

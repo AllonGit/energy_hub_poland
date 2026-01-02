@@ -4,6 +4,7 @@
   "codeowners": ["@AllonGit"],
   "config_flow": true,
   "documentation": "https://github.com/AllonGit/ha_pge_dynamic",
-  "iot_class": "cloud_polling",
-  "version": "1.0.0"
+  "iot_class": "local_polling",
+  "version": "1.0.0",
+  "requirements": []
 }

@@ -2,18 +2,13 @@
   "config": {
     "step": {
       "user": {
-        "title": "Konfiguracja PGE Dynamic Energy",
-        "description": "Podaj parametry swojej taryfy, aby poprawnie obliczać ceny brutto.",
+        "title": "Konfiguracja PGE",
         "data": {
-          "margin": "Twoja marża sprzedawcy (zł/kWh)",
-          "tariff": "Wybrana taryfa (np. G11, G12)",
-          "fee": "Opłata handlowa miesięczna (zł)"
+          "tariff": "Twoja taryfa",
+          "margin": "Marża (zł/kWh)",
+          "fee": "Opłata handlowa miesięczna (zostaw 0 dla domyślnej)"
         }
       }
-    },
-    "error": {
-      "cannot_connect": "Błąd połączenia z API PGE DataHub",
-      "unknown": "Wystąpił nieoczekiwany błąd"
     }
   }
 }
