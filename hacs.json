@@ -1,5 +1,7 @@
 {
   "name": "PGE Dynamic Energy",
-  "content_type": "integration",
+  "description": "Ceny dynamiczne PGE (FIX_1). 26 sensorów (24h + Min/Max) do magazynów energii.",
+  "category": "integration",
+  "domain": "pge_dynamic",
   "homeassistant": "2024.1.0"
 }
