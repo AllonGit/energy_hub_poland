@@ -28,16 +28,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 class PGEDataCoordinator(DataUpdateCoordinator):
-    """Koordynator używający logiki daty z Node-RED."""
     def __init__(self, hass, entry):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)
 
     async def _async_update_data(self):
-        # ODPOWIEDNIK TWOJEGO KODU JS:
         now = datetime.now()
-        today = now.strftime("%Y-%m-%d") # To tworzy ${today}
+        today = now.strftime("%Y-%m-%d")
         
-        # Budowanie msg.url
         params = {
             "source": "TGE",
             "contract": "Fix_1",
@@ -54,7 +51,6 @@ class PGEDataCoordinator(DataUpdateCoordinator):
                             raise UpdateFailed(f"Błąd API PGE: {response.status}")
                         data = await response.json()
             
-            # Parsowanie wyników
             results = data if isinstance(data, list) else data.get("quotes", [])
             prices = {}
             for item in results:
@@ -62,8 +58,7 @@ class PGEDataCoordinator(DataUpdateCoordinator):
                 price_val = item.get("price")
                 if dt_str and price_val is not None:
                     hour = int(dt_str.split(" ")[1].split(":")[0])
-                    prices[hour] = float(price_val) / 1000.0 # MWh -> kWh
-
+                    prices[hour] = float(price_val) / 1000.0
             return {"hourly": prices}
         except Exception as err:
-            raise UpdateFailed(f"Błąd połączenia: {err}")
+            raise UpdateFailed(f"Błąd: {err}")
