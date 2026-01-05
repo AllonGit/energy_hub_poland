@@ -1,11 +1,12 @@
+"""Stałe dla integracji PGE Dynamic Energy."""
 from datetime import timedelta
 
 DOMAIN = "pge_dynamic"
 CONF_TARIFF = "tariff"
 UPDATE_INTERVAL = timedelta(minutes=60)
 
-# To musi tu być, bo __init__.py tego szuka:
-API_URL = "https://api.datahub.pge.pl/pge/api/v1/dynamic-prices"
+# URL wzięty bezpośrednio z Twojego url_generator.py
+API_URL = "https://datahub.gkpge.pl/api/tge/quote"
 
 TARIFF_OPTIONS = [
     "G1x (Taryfy gospodarstw domowych)",
