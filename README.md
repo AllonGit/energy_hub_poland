@@ -80,6 +80,7 @@ Projekt udostępniany na licencji **MIT**. Pełną treść znajdziesz w pliku [L
 
 ---
 
-###👨‍⚖️ Nota prawna
+### ⚠️ Nota prawna
 Integracja ma charakter open-source i hobbystyczny. Dane są pobierane z publicznie dostępnego API PGE DataHub. 
+
 **Autor nie ponosi odpowiedzialności** za ewentualne błędy w danych, przerwy w dostawie informacji przez PGE, ani za jakiekolwiek decyzje finansowe (np. planowanie zużycia energii) podejmowane na podstawie odczytów z tej integracji. Zawsze weryfikuj dane u swojego dostawcy energii.
