@@ -20,6 +20,7 @@ class PGEPriceSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        # Pobieranie ceny z koordynatora dla danej godziny
         return round(self.coordinator.data["hourly"].get(self.hour, 0), 4)
 
 class PGECurrentPriceSensor(CoordinatorEntity, SensorEntity):
@@ -32,5 +33,6 @@ class PGECurrentPriceSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_value(self):
+        # Dynamiczne pobieranie ceny dla obecnej godziny systemowej
         hour = datetime.now().hour
         return round(self.coordinator.data["hourly"].get(hour, 0), 4)

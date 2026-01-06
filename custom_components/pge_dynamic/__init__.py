@@ -1,6 +1,6 @@
 import logging
 import async_timeout
-from datetime import datetime
+from datetime import datetime, timedelta
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import DOMAIN, API_URL, UPDATE_INTERVAL
@@ -19,8 +19,10 @@ class PGEDataCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)
 
     async def _async_update_data(self):
-        today = datetime.now().strftime("%Y-%m-%d")
-        url = f"{API_URL}?source=TGE&contract=Fix_1&date_from={today} 00:00:00&date_to={today} 23:59:59&limit=100"
+        # Generowanie URL zgodnie z Twoją logiką - Data obrotu to wczoraj
+        now = datetime.now()
+        yesterday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        url = f"{API_URL}?source=TGE&contract=Fix_1&date_from={yesterday_str} 00:00:00&date_to={yesterday_str} 23:59:59&limit=100"
         
         try:
             session = async_get_clientsession(self.hass)
@@ -30,7 +32,7 @@ class PGEDataCoordinator(DataUpdateCoordinator):
 
             prices = {}
             for item in data:
-                # Parsowanie daty i godziny
+                # Parsowanie godziny
                 dt = datetime.strptime(item['date_time'], "%Y-%m-%d %H:%M:%S")
                 
                 # Wyciąganie ceny z atrybutów
@@ -43,6 +45,9 @@ class PGEDataCoordinator(DataUpdateCoordinator):
                 # Konwersja MWh -> kWh
                 prices[dt.hour] = price_val / 1000
             
+            if not prices:
+                raise UpdateFailed(f"Brak danych dla URL: {url}")
+
             return {"hourly": prices}
         except Exception as e:
             _LOGGER.error("Blad pobierania danych z PGE: %s", e)
