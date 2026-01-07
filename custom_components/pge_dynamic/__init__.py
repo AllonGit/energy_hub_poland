@@ -19,7 +19,7 @@ class PGEDataCoordinator(DataUpdateCoordinator):
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=UPDATE_INTERVAL)
 
     async def _async_update_data(self):
-        # Generowanie URL zgodnie z Twoją logiką - Data obrotu to wczoraj
+        # Generowanie URL
         now = datetime.now()
         yesterday_str = (now - timedelta(days=1)).strftime("%Y-%m-%d")
         url = f"{API_URL}?source=TGE&contract=Fix_1&date_from={yesterday_str} 00:00:00&date_to={yesterday_str} 23:59:59&limit=100"
