@@ -61,6 +61,69 @@ series:
       }
       return prices;
 ```
+## 💡 Przykładowe Automatyzacje
+
+Poniżej znajdziesz gotowe kody, które możesz skopiować do swojego Home Assistant (Ustawienia -> Automatyzacje -> Utwórz nową -> Edytuj w YAML).
+
+#### Automatyzacja:START ładowania
+
+```yaml
+alias: "Magazyn - Start ładowania"
+description: "Włącza ładowanie z sieci, gdy cena jest niska"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.pge_cena_aktualna
+    below: 0.45                        # Cena od której startujemy (np. 45 gr)
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: switch.deye_grid_charge # Przełącznik ładowania w falowniku (podaj switch włączania ładowania z sieci)
+  - service: notify.mobile_app_twoj_telefon # Powiadomienie na telefon(podaj swój serwis)
+    data:
+      title: "🔋 Start ładowania magazynu"
+      message: "Cena spadła do {{ states('sensor.pge_cena_aktualna') }} PLN. Uruchamiam ładowanie magazynu."
+mode: single
+```
+#### Automatyzacja:STOP ładowania
+
+```yaml
+alias: "Magazyn - Stop ładowania"
+description: "Wyłącza ładowanie z sieci, gdy cena wzrośnie"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.pge_cena_aktualna
+    above: 0.55                        # Cena powyżej której kończymy (np. 55 gr)
+action:
+  - service: switch.turn_off
+    target:
+      entity_id: switch.deye_grid_charge # Przełącznik ładowania w falowniku (ten sam co przy starcie)
+  - service: notify.mobile_app_twoj_telefon # Powiadomienie na telefon (podaj swój serwis)
+    data:
+      title: "💰 Koniec ładowania"
+      message: "Cena wzrosła do {{ states('sensor.pge_cena_aktualna') }} PLN. Wyłączam ładowanie z sieci."
+mode: single
+```
+#### Automatyzacja: Powiadomienie na telefon
+
+```yaml
+alias: "Magazyn - Tylko powiadomienie"
+description: "Wysyła info o taniej energii bez ingerencji w falownik"
+trigger:
+  - platform: numeric_state
+    entity_id: sensor.pge_cena_aktualna
+    below: 0.45                        # Próg ceny dla powiadomienia (np. 45 gr)
+action:
+  - service: notify.mobile_app_twoj_telefon # Powiadomienie na telefon (podaj swój serwis)
+    data:
+      title: "🔋 Uwaga! Tani prąd"
+      message: "Cena spadła do {{ states('sensor.pge_cena_aktualna') }} PLN. Możesz ręcznie włączyć ładowanie."
+mode: single
+```
+
+## 📈 Pomóż w rozwoju projektu
+Jeśli korzystasz z tej integracji, proszę rozważ włączenie opcji **Analytics** w ustawieniach Twojego Home Assistant. Dzięki temu będę wiedział, ilu użytkowników korzysta z projektu, co daje mi ogromną motywację do dodawania nowych funkcji (np. wsparcia dla taryf G12/G12w).
+
+
 
 ## 🤝 Współtworzenie i społeczność
 
