@@ -66,11 +66,10 @@ The integration is fully compatible with the official **Energy Dashboard**. To s
 Example configuration for ApexCharts Card (displays hourly prices for the entire day):
 
 ```yaml
-
 type: custom:apexcharts-card
 header:
   show: true
-  title: PGE Energy Prices (Net)
+  title: Ceny Energii PGE (Netto)
   show_states: true
 graph_span: 24h
 span:
