@@ -159,6 +159,20 @@ Do you have questions, ideas for new features, or want to show off your dashboar
 * ⭐ **GitHub:** If this integration helps you, please leave a Star – it keeps me motivated to keep developing!
 * **Community Standards:** We follow the rules of the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
+## 🗺️ Roadmap
+
+<details>
+<summary><b>Click for Road map</b></summary>
+
+| Version | Stage | Key Features |
+| :--- | :--- | :--- |
+| **v1.2.0** | **Data Management** | Next-day forecasting (DAM), tariff profiles (G1x/G12), min/max price entities. |
+| **v1.2.1** | **Real-Cost Calc** | Gross multiplier (VAT + fees) configurable via UI. |
+| **v1.3.0** | **Automation** | "Price Window" binary sensor (automatic detection of cheapest hours). |
+| **v1.4.0** | **Notifications** | Ready-to-use Blueprints for Push and TTS notifications. |
+| **v1.5.0** | **Reporting** | Savings statistics module vs. traditional flat-rate tariffs. |
+| **v1.6.x+** | **Intelligence** | Forecast.Solar synergy (PV production-based optimization). |
+
 ## ❓ Troubleshooting
 Status unavailable:
 The PGE DataHub API updates data at specific times. If the sensor has no data, check Settings -> System -> Logs. Look for entries related to pge_dynamic.
@@ -333,9 +347,25 @@ Upewnij się, że zainstalowałeś ApexCharts Card przez HACS.
 ## Ważna informacja o cenach
 Cena w integracji to cena netto czystej energii (Rynek Bilansujący). Pamiętaj, że Twój ostateczny rachunek zawiera dodatkowo:
 
-Podatki (VAT, akcyza).
+* **Podatki (VAT, akcyza).**
 
-Opłaty dystrybucyjne (zmienne i stałe).
+* **Opłaty dystrybucyjne (zmienne i stałe).**
+
+## Plan rozwoju
+
+<details>
+<summary><b>Kliknij, aby rozwinąć plan rozwoju</b></summary>
+
+| Wersja | Etap | Kluczowe funkcje |
+| :--- | :--- | :--- |
+| **v1.2.0** | **Zarządzanie Danymi** | Prognoza cen na jutro (RDN), profile taryfowe (G1x/G12), encje ceny min/max. |
+| **v1.2.1** | **Koszty Realne** | Mnożnik brutto (VAT + opłaty) konfigurowalny w UI. |
+| **v1.3.0** | **Automatyzacja** | Binary sensor "Tanie Okno" (automatyczne wykrywanie najtańszych godzin). |
+| **v1.4.0** | **Powiadomienia** | Gotowe Blueprints dla powiadomień Push i TTS. |
+| **v1.5.0** | **Analityka** | Moduł statystyk i raport oszczędności względem taryf płaskich. |
+| **v1.6.x+** | **Inteligencja** | Synergia z Forecast.Solar (optymalizacja pod produkcję PV). |
+
+</details>
 
 ## 💬 Społeczność i wsparcie
 Masz pytania, pomysły na nowe funkcje lub chcesz pochwalić się swoim dashboardem?
