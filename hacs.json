@@ -1,11 +1,7 @@
 {
   "name": "PGE Dynamic Energy",
-  "description": "Ceny dynamiczne energii elektrycznej z PGE DataHub (TGE)",
-  "category": "integration",
-  "version": "1.1.2",
   "homeassistant": "2024.1.0",
   "render_readme": true,
-  "iot_class": "cloud_polling",
   "country": "PL",
   "content_in_root": false,
   "filename": "pge_dynamic"
