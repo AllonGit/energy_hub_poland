@@ -1,7 +1,7 @@
 {
   "domain": "pge_dynamic",
   "name": "PGE Dynamic Energy",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "documentation": "https://github.com/AllonGit/ha_pge_dynamic",
   "issue_tracker": "https://github.com/AllonGit/ha_pge_dynamic/issues",
   "config_flow": true,
