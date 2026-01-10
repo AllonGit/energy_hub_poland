@@ -51,6 +51,17 @@ Click Add Integration and search for PGE Dynamic Energy.
 
 Enter a name and select your tariff (e.g., G1x).
 
+## 💰 How to add costs to the Energy Dashboard?
+The integration is fully compatible with the official **Energy Dashboard**. To see your spending in your local currency:
+1. Go to the **Energy** tab in Home Assistant.
+2. Click the **three dots** in the top right corner and select **Edit dashboard** (pencil icon).
+3. In the **Electricity grid** section, click the **pencil icon** next to your main energy consumption sensor.
+4. Select the option **"Use an entity with current price"**.
+5. Search for and select: `sensor.pge_cena_aktualna`.
+6. Click **Save**.
+
+> **Tip:** Cost calculations will start appearing in the dashboard after approximately 1-2 hours.
+
 ## 📊 Charts (ApexCharts)
 Example configuration for ApexCharts Card (displays hourly prices for the entire day):
 
@@ -142,6 +153,12 @@ action:
 mode: single
 ```
 
+## 💬 Community and Support
+Do you have questions, ideas for new features, or want to show off your dashboard?
+* 🏠 **Forum:** Join the discussion on the [ArturHome Forum](https://forum.arturhome.pl/t/integracja-ceny-dynamiczne-pge/16152/10).
+* ⭐ **GitHub:** If this integration helps you, please leave a Star – it keeps me motivated to keep developing!
+* **Community Standards:** We follow the rules of the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+
 ## ❓ Troubleshooting
 Status unavailable:
 The PGE DataHub API updates data at specific times. If the sensor has no data, check Settings -> System -> Logs. Look for entries related to pge_dynamic.
@@ -190,6 +207,23 @@ Integracja pobierająca aktualne ceny energii elektrycznej (Rynek Bilansujący) 
 1. Przejdź do **Ustawienia** -> **Urządzenia oraz usługi**.
 2. Kliknij **Dodaj integrację** i wyszukaj `PGE Dynamic Energy`.
 3. Wpisz nazwę oraz wybierz swoją taryfę (np. **G1x**).
+
+## 💰 Jak dodać koszty w panelu Energia?
+Integracja jest w pełni kompatybilna z oficjalnym panelem Energia. Aby widzieć wydatki w złotówkach, wykonaj te 4 proste kroki:
+
+Przejdź do zakładki Energia w swoim Home Assistant.
+
+Kliknij Edytuj panel (ikona ołówka).
+
+W sekcji Sieć elektryczna, przy Twoim głównym sensorze poboru energii, kliknij ponownie ikonę ołówka (Edytuj).
+
+Wybierz opcję "Użyj encji z bieżącą ceną" i z listy wybierz sensor:
+
+**sensor.pge_cena_aktualna**
+
+Kliknij Zapisz.
+
+**Wskazówka:** Pierwsze wyliczenia kosztów pojawią się w panelu po około 1-2 godzinach od konfiguracji.
 
 ## 📊 Wykresy (ApexCharts)
 Przykład konfiguracji dla karty `ApexCharts Card` (wyświetla ceny godzinowe na całą dobę):
@@ -283,7 +317,6 @@ mode: single
 ## 📈 Pomóż w rozwoju projektu
 Jeśli korzystasz z tej integracji, proszę rozważ włączenie opcji **Analytics** w ustawieniach Twojego Home Assistant. Dzięki temu będę wiedział, ilu użytkowników korzysta z projektu, co daje mi ogromną motywację do dodawania nowych funkcji (np. wsparcia dla taryf G12/G12w).
 
-
 ## 📸 Podgląd
 <p align="center">
   <img src="./images/ApexCharts.png" alt="Podgląd wykresu ApexCharts" width="600">
@@ -304,15 +337,19 @@ Podatki (VAT, akcyza).
 
 Opłaty dystrybucyjne (zmienne i stałe).
 
+## 💬 Społeczność i wsparcie
+Masz pytania, pomysły na nowe funkcje lub chcesz pochwalić się swoim dashboardem?
+* 🏠 **Forum:** Zapraszam do wątku na forum [ArturHome](https://forum.arturhome.pl/t/integracja-ceny-dynamiczne-pge/16152/10).
+* ⭐ **GitHub:** Jeśli integracja Ci pomaga, zostaw proszę gwiazdkę – to motywuje do dalszej pracy!
+* **Standardy społeczności:** Obowiązuje nas [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 
-## 🤝 Współtworzenie i społeczność
+## 🤝 Współtworzenie
 
 Chcesz pomóc w rozwoju projektu? Zapraszamy!
 
 * **Masz pomysł lub znalazłeś błąd?** Otwórz [Issue](https://github.com/AllonGit/ha_pge_dynamic/issues).
 * **Zasady współpracy:** Sprawdź nasz plik [CONTRIBUTING.md](CONTRIBUTING.md).
-* **Standardy społeczności:** Obowiązuje nas [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## 🛡️ Bezpieczeństwo
 
