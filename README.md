@@ -1,428 +1,200 @@
-# ⚡ PGE Dynamic Energy dla Home Assistant
-### Przestań przepłacać za prąd. Automatyzuj dom w oparciu o realne ceny rynkowe PGE.
+# ⚡ Energy Hub Poland
+### Twój inteligentny asystent kosztów energii w Home Assistant.
 
-**Idealne dla posiadaczy magazynów energii, samochodów elektrycznych oraz każdego, kto chce obniżyć rachunki za energię.**
+### Język/Language
+<details>
+<summary> click to expand </summary>
+
+**Energy Hub Poland** is an advanced integration that does more than just fetch energy prices. It acts as your personal energy analyst. Whether you use a dynamic tariff (RCE) or a fixed time-of-use tariff (G12/G12w), this system calculates your real costs and suggests how to save money.
 
 ![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![version](https://img.shields.io/github/v/release/AllonGit/ha_pge_dynamic)
-![license](https://img.shields.io/github/license/AllonGit/ha_pge_dynamic)
-![last_commit](https://img.shields.io/github/last-commit/AllonGit/ha_pge_dynamic?color=green)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=ha_pge_dynamic&category=integration)
-
-## 🌍 Language / Język
-
-<details>
-<summary><b>Click here for English version</b></summary>
-
-Integration that fetches current electricity prices (Balancing Market) directly from the official PGE DataHub API. This tool allows you to monitor market rates in real-time directly within your Home Assistant dashboard.
-
-<p align="center"> <img src="images/logo.png" alt="PGE Dynamic Energy Logo" width="600"> </p>
-
-## 🌟 Main Features
-* **UI Configuration:** Simple integration setup via the Home Assistant interface (Config Flow).
-
-* **Net Price:** Displays the current market rate in PLN/kWh.
-
-* **Accuracy:** Data fetched from the Fix_1 contract (Balancing Market).
-
-* **Full Day Coverage:** 24 separate hourly sensors (from 00:00 to 23:00).
-
-* **Current Sensor:** sensor.pge_cena_aktualna – price for the current hour.
-
-Optimization: Uses DataUpdateCoordinator for minimal system load.
-
-## 🚀 Installation
-Via HACS (Recommended)
-In Home Assistant, go to HACS -> Integrations.
-
-Click the three dots in the top right corner and select Custom repositories.
-
-Paste this repository URL: https://github.com/AllonGit/ha_pge_dynamic
-
-Select the Integration category and click Add.
-
-Find the integration in the list, click Download, and then restart Home Assistant.
-
-## ⚙️ Configuration
-Go to Settings -> Devices & Services.
-
-Click Add Integration and search for PGE Dynamic Energy.
-
-Enter a name and select your tariff (e.g., G1x).
-
-## 💰 How to add costs to the Energy Dashboard?
-The integration is fully compatible with the official **Energy Dashboard**. To see your spending in your local currency:
-1. Go to the **Energy** tab in Home Assistant.
-2. Click the **three dots** in the top right corner and select **Edit dashboard** (pencil icon).
-3. In the **Electricity grid** section, click the **pencil icon** next to your main energy consumption sensor.
-4. Select the option **"Use an entity with current price"**.
-5. Search for and select: `sensor.pge_cena_aktualna`.
-6. Click **Save**.
-
-> **Tip:** Cost calculations will start appearing in the dashboard after approximately 1-2 hours.
-
-## 📊 Charts (ApexCharts)
-Example configuration for ApexCharts Card (displays hourly prices for the entire day):
-
-```yaml
-type: custom:apexcharts-card
-update_interval: 1min
-header:
-  show: true
-  title: Ceny Energii PGE (Netto)
-  show_states: true
-graph_span: 24h
-span:
-  start: day
-yaxis:
-  - decimals: 3
-series:
-  - entity: sensor.pge_cena_aktualna
-    show:
-      in_chart: false
-      in_header: true
-    name: "Cena Aktualna"
-    float_precision: 3
-
-  - entity: sensor.pge_cena_aktualna
-    type: column
-    color: "#ff9800"
-    float_precision: 3
-    show:
-      in_header: false
-      legend_value: false
-    data_generator: |
-      const prices = [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      for (let i = 0; i < 24; i++) {
-        const hourStr = i.toString().padStart(2, '0');
-        const entityId = `sensor.pge_cena_${hourStr}_00`;
-        const stateObj = hass.states[entityId];
-        if (stateObj) {
-          const timestamp = new Date(today).setHours(i, 0, 0, 0);
-          prices.push([timestamp, parseFloat(stateObj.state)]);
-        }
-      }
-      return prices;
-```
-
-
-## 💡 Example Automations
-Below you will find ready-to-use codes that you can copy to your Home Assistant (Settings -> Automations -> Create new -> Edit in YAML).
-
-#### Automation: START charging
-```yaml
-
-alias: "Storage - Start charging"
-description: "Turns on grid charging when the price is low"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    below: 0.45                        # Price at which we start (e.g., 0.45 PLN)
-action:
-  - action: switch.turn_on
-    target:
-      entity_id: switch.deye_grid_charge # Your inverter charging switch
-  - action: notify.mobile_app_your_phone
-    data:
-      title: "🔋 Storage charging started"
-      message: "Price dropped to {{ states('sensor.pge_cena_aktualna') }} PLN. Starting storage charging."
-mode: single
-```
-#### Automation: STOP charging
-
-```yaml
-alias: "Storage - Stop charging"
-description: "Turns off grid charging when the price rises"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    above: 0.55                        # Price above which we stop (e.g., 0.55 PLN)
-action:
-  - action: switch.turn_off
-    target:
-      entity_id: switch.deye_grid_charge # Your inverter charging switch
-  - action: notify.mobile_app_your_phone
-    data:
-      title: "💰 Charging finished"
-      message: "Price rose to {{ states('sensor.pge_cena_aktualna') }} PLN. Stopping grid charging."
-mode: single
-```
-#### Automation: Phone Notification
-
-```yaml
-alias: "Notification: Low Energy Price"
-description: "Sends a notification when the energy price drops below a set threshold"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    below: 0.45  # Price threshold (e.g., 0.45 PLN)
-action:
-  - action: notify.mobile_app_your_phone_name # Replace with your actual mobile app notify service
-    data:
-      title: "💰 Low Energy Price!"
-      message: >
-        The current energy price is {{ states('sensor.pge_cena_aktualna') }} PLN/kWh. 
-        It's a great time to run high-energy appliances!
-```
-
-## 💬 Community and Support
-Do you have questions, ideas for new features, or want to show off your dashboard?
-* 🏠 **Forum:** Join the discussion on the [ArturHome Forum](https://forum.arturhome.pl/t/integracja-ceny-dynamiczne-pge/16152/10).
-* ⭐ **GitHub:** If this integration helps you, please leave a Star – it keeps me motivated to keep developing!
-* **Community Standards:** We follow the rules of the [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-
-## 🗺️ Roadmap
-
-<details>
-<summary><b>Click for Road map</b></summary>
-
-| Version | Stage | Key Features |
-| :--- | :--- | :--- |
-| **v1.2.0** | **Data Management** | Next-day forecasting (DAM), tariff profiles (G1x/G12), min/max price entities. |
-| **v1.2.1** | **Real-Cost Calc** | Gross multiplier (VAT + fees) configurable via UI. |
-| **v1.3.0** | **Automation** | "Price Window" binary sensor (automatic detection of cheapest hours). |
-| **v1.4.0** | **Notifications** | Ready-to-use Blueprints for Push and TTS notifications. |
-| **v1.5.0** | **Reporting** | Savings statistics module vs. traditional flat-rate tariffs. |
-| **v1.6.x+** | **Intelligence** | Forecast.Solar synergy (PV production-based optimization). |
-
-</details>
-
-## ❓ Troubleshooting
-Status unavailable:
-The PGE DataHub API updates data at specific times. If the sensor has no data, check Settings -> System -> Logs. Look for entries related to pge_dynamic.
-
-Important Price Information
-The price in the integration is the net price of raw energy (Balancing Market). Remember that your final bill additionally includes:
-
-* Taxes (VAT, excise).
-
-* Distribution fees (variable and fixed).
-
-## ⚖️ License & Disclaimer
-Project released under the MIT License.
-
-Legal Note: This integration is open-source and for hobbyist use. Data is fetched from the publicly available PGE DataHub API. The author is not responsible for any data errors or financial decisions made based on this information. Always verify data with your energy provider.
-
-</details>
-
-Integracja pobierająca aktualne ceny energii elektrycznej (Rynek Bilansujący) bezpośrednio z oficjalnego API **PGE DataHub**. Narzędzie pozwala na monitorowanie stawek rynkowych w czasie rzeczywistym bezpośrednio w Twoim panelu Home Assistant.
+![version](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?label=version)
+![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=license)
 
 <p align="center">
-  <img src="images/logo.png" alt="PGE Dynamic Energy Logo" width="600">
+  <img src="images/logo.png" alt="Energy Hub Poland Logo" width="600">
 </p>
 
-## 🌟 Główne Funkcje
+## 🌟 Features and Operation Modes
 
-* **Konfiguracja przez UI:** Proste dodawanie integracji przez interfejs Home Assistant (Config Flow).
-* **Cena Netto:** Wyświetla aktualną stawkę rynkową w **PLN/kWh**.
-* **Dokładność:** Dane pobierane z kontraktu Fix_1 (Rynek Bilansujący).
-* **Kompletna doba:** 24 odrębne sensory godzinne (od `00:00` do `23:00`).
-* **Sensor bieżący:** `sensor.pge_cena_aktualna` – cena dla obecnej godziny.
-* **Optymalizacja:** Używa `DataUpdateCoordinator` dla minimalnego obciążenia systemu.
+The integration offers 4 modes of operation, selected during configuration:
+
+### 1. 📉 Dynamic Mode (RCE / Market Prices)
+For users billed according to hourly market rates (PGE DataHub / TGE).
+* **Current Price:** Refreshed hourly.
+* **Forecast:** Full price schedule for "Tomorrow" (available after ~2:00 PM).
+* **Statistics:** Automatic detection of the lowest and highest prices of the day.
+
+### 2. 🏠 G12 / G12w Modes (Time-of-Use Tariffs)
+Perfect reflection of your contract with the operator.
+* **Flexible Zones:** You define your own peak hours (e.g., `6-13,15-22`).
+* **Auto-Holidays (G12w):** The integration automatically recognizes weekends and **Polish statutory holidays** as off-peak (cheap) zones (uses the `holidays` library).
+* **Visualization:** A `Zone` sensor shows a clear status: "Peak" (Szczyt) or "Off-peak" (Poza szczytem).
+
+### 3. 📊 Comparison Mode (Savings Simulator)
+**The most powerful feature.** It allows you to check the profitability of changing tariffs based on your real usage.
+* The system calculates costs in parallel for **Dynamic**, **G12**, and **G12w** tariffs.
+* **Balance Sensor:** Shows in PLN (Polish Złoty) how much you saved (or lost) today compared to another tariff.
+* **Tariff Recommendation:** An intelligent sensor that analyzes your usage and suggests: *"For you, the cheapest tariff is G12w"*.
+
+---
+
+## 🚀 Installation
+
+### Step 1: HACS
+1.  Open **HACS** -> **Integrations**.
+2.  Menu (3 dots) -> **Custom repositories**.
+3.  Add URL: `https://github.com/AllonGit/energy_hub_poland`
+4.  Download the integration and restart Home Assistant.
+
+### Step 2: Configuration
+Go to **Settings** -> **Devices & Services** -> **Add Integration** -> **Energy Hub Poland**.
+
+The wizard will guide you through the configuration depending on the selected mode:
+1.  **Select Mode:** Dynamic, G12, G12w, or Comparison.
+2.  **Prices and Hours (for G12/G12w/Comparison):** Enter net rates and peak hours (format: `6-13,15-22`).
+3.  **Energy Sensor (Optional):** Select your electricity meter (kWh, `total_increasing` type) to unlock cost calculations in PLN.
+
+---
+
+## 💡 Key Sensors
+
+After installation, the following entities will appear (names may vary slightly depending on config). 
+*Note: Entity friendly names are currently generated in Polish.*
+
+| Function | Example Entity ID | Description |
+| :--- | :--- | :--- |
+| **Current Price** | `sensor.energy_hub_poland_cena_aktualna` | Current rate for 1 kWh (Net). |
+| **Tomorrow's Price** | `sensor.energy_hub_poland_cena_jutro` | Attributes contain the price list for the next day. |
+| **Min/Max** | `sensor.energy_hub_poland_cena_min_dzis` | The lowest price value for the current day. |
+| **Zone (G12)** | `sensor.energy_hub_poland_strefa_g12` | Status: "Szczyt" (Peak) / "Poza szczytem" (Off-peak). |
+| **Cost Today** | `sensor.energy_hub_poland_koszt_dzis_dynamiczna` | How much you spent on electricity today (requires meter). |
+| **Balance** | `sensor.energy_hub_poland_bilans_dynamiczna_vs_g12_dzis` | Cost difference between tariffs (Comparison Mode). |
+| **Recommendation**| `sensor.energy_hub_poland_rekomendacja_taryfy` | Suggested best tariff for your household. |
+
+### How to add to the Energy Dashboard?
+In the official HA "Energy" dashboard settings, under "Grid consumption", select the price entity:
+* `sensor.energy_hub_poland_cena_aktualna` (for Dynamic tariff)
+* `sensor.energy_hub_poland_cena_aktualna_g12` (for G12 tariff)
+
+---
+
+## ❓ FAQ & Troubleshooting
+
+**1. Do the prices include VAT?**
+No. The integration operates on active energy prices (Net). Market prices fetched from the API are Net. Remember that your final bill also includes distribution fees and taxes.
+
+**2. How to enter peak hours?**
+Use a comma-separated range format. For example: `6-13,15-22` means peak hours are from 06:00 to 13:00 AND from 15:00 to 22:00.
+
+---
+
+## ⚖️ License and Legal Notice
+
+The integration retrieves data from the publicly available PGE DataHub API. The author is not responsible for financial decisions made based on sensor readings.
+
+**Project is released under the Apache 2.0 License with the following additional restrictions:**
+
+1.  **Private Use:** You are free to use, modify, and install this software for private and educational purposes.
+2.  **Commercial Restriction:** The use of the unique tariff comparison logic, recommendation algorithms, and the "Energy Hub" brand in paid products, commercial advisory services, or closed systems **is prohibited without the written consent of the author**.
+3.  **Trademarks:** The name "Energy Hub Poland" and associated logos are trademarks of the author.
+
+*Copyright (c) 2026 AllonGit*
+</p>
+</details>
+
+
+**Energy Hub Poland** to zaawansowana integracja, która nie tylko pobiera ceny energii, ale działa jak Twój osobisty analityk. Niezależnie od tego, czy masz taryfę dynamiczną, czy stałą (G12/G12w), system policzy Twoje realne koszty i podpowie, jak oszczędzać.
+
+![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
+![version](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?label=wersja)
+![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=licencja)
+
+<p align="center">
+  <img src="images/logo.png" alt="Energy Hub Poland Logo" width="600">
+</p>
+
+## 🌟 Możliwości i Tryby Pracy
+
+Integracja oferuje 4 tryby pracy, wybierane podczas konfiguracji:
+
+### 1. 📉 Tryb Dynamiczny (RCE)
+Dla użytkowników rozliczających się wg stawek godzinowych z giełdy (PGE DataHub).
+* **Aktualna cena:** Odświeżana co godzinę.
+* **Prognoza:** Pełny harmonogram cen na "Jutro" (dostępny po godz. 14:00).
+* **Statystyki:** Automatyczne wykrywanie najniższej i najwyższej ceny dnia.
+
+### 2. 🏠 Tryby G12 / G12w (Taryfy Strefowe)
+Idealne odwzorowanie Twojej umowy z operatorem.
+* **Elastyczne strefy:** Sam definiujesz godziny szczytu (np. `6-13,15-22`).
+* **Auto-Święta (G12w):** Integracja automatycznie rozpoznaje weekendy oraz **polskie święta ustawowe** jako strefę tanią (wymaga biblioteki `holidays`).
+* **Wizualizacja:** Sensor `Strefa` pokazuje czytelny status: "Szczyt" lub "Poza szczytem".
+
+### 3. 📊 Tryb Porównawczy (Symulator Oszczędności)
+**Najpotężniejsza funkcja integracji.** Pozwala sprawdzić opłacalność zmiany taryfy na żywym organizmie.
+* System liczy koszty równolegle dla **Dynamicznej**, **G12** i **G12w**.
+* **Sensor Bilansu:** Pokazuje w PLN, ile zyskałeś (lub straciłeś) danego dnia względem innej taryfy.
+* **Rekomendacja Taryfy:** Inteligentny sensor, który analizuje Twoje zużycie i wskazuje: *"Dla Ciebie najtańsza jest taryfa G12w"*.
+
+---
 
 ## 🚀 Instalacja
 
-### Przez HACS (Zalecane)
+### Krok 1: HACS
+1.  Otwórz **HACS** -> **Integracje**.
+2.  Menu (3 kropki) -> **Niestandardowe repozytoria**.
+3.  Dodaj URL: `https://github.com/AllonGit/energy_hub_poland`
+4.  Pobierz integrację i zrestartuj Home Assistant.
 
-1. W Home Assistant przejdź do **HACS** -> **Integracje**.
-2. Kliknij trzy kropki w prawym górnym rogu i wybierz **Custom repositories**.
-3. Wklej URL tego repozytorium: `https://github.com/AllonGit/ha_pge_dynamic`
-4. Wybierz kategorię **Integration** i kliknij **Dodaj**.
-5. Znajdź integrację na liście, kliknij **Pobierz**, a następnie zrestartuj Home Assistant.
+### Krok 2: Konfiguracja
+Wejdź w **Ustawienia** -> **Urządzenia oraz usługi** -> **Dodaj integrację** -> **Energy Hub Poland**.
 
-## ⚙️ Konfiguracja
+Kreator poprowadzi Cię przez konfigurację zależną od wybranego trybu:
+1.  **Wybór Trybu:** Dynamiczny, G12, G12w lub Porównawczy.
+2.  **Ceny i Godziny (dla G12/G12w/Porównawczego):** Podaj stawki netto i godziny szczytu (format: `6-13,15-22`).
+3.  **Sensor Energii (Opcjonalny):** Wskaż swój licznik zużycia (kWh, typ `total_increasing`), aby odblokować obliczanie kosztów w złotówkach.
 
-1. Przejdź do **Ustawienia** -> **Urządzenia oraz usługi**.
-2. Kliknij **Dodaj integrację** i wyszukaj `PGE Dynamic Energy`.
-3. Wpisz nazwę oraz wybierz swoją taryfę (np. **G1x**).
+---
 
-## 💰 Jak dodać koszty w panelu Energia?
-Integracja jest w pełni kompatybilna z oficjalnym panelem Energia. Aby widzieć wydatki w złotówkach, wykonaj te 4 proste kroki:
+## 💡 Kluczowe Sensory
 
-Przejdź do zakładki Energia w swoim Home Assistant.
+Po instalacji w systemie pojawią się encje (nazwy mogą się różnić w zależności od konfiguracji):
 
-Kliknij Edytuj panel (ikona ołówka).
-
-W sekcji Sieć elektryczna, przy Twoim głównym sensorze poboru energii, kliknij ponownie ikonę ołówka (Edytuj).
-
-Wybierz opcję "Użyj encji z bieżącą ceną" i z listy wybierz sensor:
-
-**sensor.pge_cena_aktualna**
-
-Kliknij Zapisz.
-
-**Wskazówka:** Pierwsze wyliczenia kosztów pojawią się w panelu po około 1-2 godzinach od konfiguracji.
-
-## 📊 Wykresy (ApexCharts)
-Przykład konfiguracji dla karty `ApexCharts Card` (wyświetla ceny godzinowe na całą dobę):
-
-```yaml
-type: custom:apexcharts-card
-update_interval: 1min
-header:
-  show: true
-  title: Ceny Energii PGE (Netto)
-  show_states: true
-graph_span: 24h
-span:
-  start: day
-yaxis:
-  - decimals: 3
-series:
-  - entity: sensor.pge_cena_aktualna
-    show:
-      in_chart: false
-      in_header: true
-    name: "Cena Aktualna"
-    float_precision: 3
-
-  - entity: sensor.pge_cena_aktualna
-    type: column
-    color: "#ff9800"
-    float_precision: 3
-    show:
-      in_header: false
-      legend_value: false
-    data_generator: |
-      const prices = [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      for (let i = 0; i < 24; i++) {
-        const hourStr = i.toString().padStart(2, '0');
-        const entityId = `sensor.pge_cena_${hourStr}_00`;
-        const stateObj = hass.states[entityId];
-        if (stateObj) {
-          const timestamp = new Date(today).setHours(i, 0, 0, 0);
-          prices.push([timestamp, parseFloat(stateObj.state)]);
-        }
-      }
-      return prices;
-```
-## 💡 Przykładowe Automatyzacje
-
-Poniżej znajdziesz gotowe kody, które możesz skopiować do swojego Home Assistant (Ustawienia -> Automatyzacje -> Utwórz nową -> Edytuj w YAML).
-
-#### Automatyzacja:START ładowania
-
-```yaml
-alias: "Magazyn - Start ładowania"
-description: "Włącza ładowanie z sieci, gdy cena jest niska"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    below: 0.45                        # Cena od której startujemy (np. 45 gr)
-action:
-  - action: switch.turn_on
-    target:
-      entity_id: switch.deye_grid_charge # Przełącznik ładowania w falowniku (podaj switch włączania ładowania z sieci)
-  - action: notify.mobile_app_twoj_telefon # Powiadomienie na telefon
-    data:
-      title: "🔋 Start ładowania magazynu"
-      message: "Cena spadła do {{ states('sensor.pge_cena_aktualna') }} PLN. Uruchamiam ładowanie magazynu."
-mode: single
-```
-#### Automatyzacja:STOP ładowania
-
-```yaml
-alias: "Magazyn - Stop ładowania"
-description: "Wyłącza ładowanie z sieci, gdy cena wzrośnie"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    above: 0.55                        # Cena powyżej której kończymy (np. 55 gr)
-action:
-  - action: switch.turn_off
-    target:
-      entity_id: switch.deye_grid_charge # Przełącznik ładowania w falowniku (ten sam co przy starcie)
-  - action: notify.mobile_app_twoj_telefon # Powiadomienie na telefon 
-    data:
-      title: "💰 Koniec ładowania"
-      message: "Cena wzrosła do {{ states('sensor.pge_cena_aktualna') }} PLN. Wyłączam ładowanie z sieci."
-mode: single
-```
-#### Automatyzacja: Powiadomienie na telefon
-
-```yaml
-alias: "Powiadomienie: Tani prąd"
-description: "Wysyła info, gdy cena energii spadnie poniżej ustalonego progu"
-trigger:
-  - platform: numeric_state
-    entity_id: sensor.pge_cena_aktualna
-    below: 0.45  # Próg ceny (np. 0.45 PLN)
-action:
-  - action: notify.mobile_app_twoj_telefon # Pamiętaj, aby wpisać tu nazwę swojego telefonu
-    data:
-      title: "💰 Niska cena energii!"
-      message: >
-        Aktualna cena prądu to {{ states('sensor.pge_cena_aktualna') }} PLN/kWh. 
-        To dobry moment na włączenie pralki lub zmywarki!Cena spadła do {{ states('sensor.pge_cena_aktualna') }} PLN. Możesz ręcznie włączyć ładowanie."
-mode: single
-```
-
-## 📈 Pomóż w rozwoju projektu
-Jeśli korzystasz z tej integracji, proszę rozważ włączenie opcji **Analytics** w ustawieniach Twojego Home Assistant. Dzięki temu będę wiedział, ilu użytkowników korzysta z projektu, co daje mi ogromną motywację do dodawania nowych funkcji (np. wsparcia dla taryf G12/G12w).
-
-## 📸 Podgląd
-<p align="center">
-  <img src="./images/ApexCharts.png" alt="Podgląd wykresu ApexCharts" width="600">
-</p>
-
-## ❓ Rozwiązywanie problemów (Troubleshooting)
-
-#### Status unavailable: 
-API PGE DataHub aktualizuje dane o określonych godzinach. Jeśli sensor nie ma danych, sprawdź Ustawienia -> System -> Logi. Szukaj wpisów dotyczących pge_dynamic.
-
-#### Błąd importu w ApexCharts: 
-Upewnij się, że zainstalowałeś ApexCharts Card przez HACS.
-
-## Ważna informacja o cenach
-Cena w integracji to cena netto czystej energii (Rynek Bilansujący). Pamiętaj, że Twój ostateczny rachunek zawiera dodatkowo:
-
-* **Podatki (VAT, akcyza).**
-
-* **Opłaty dystrybucyjne (zmienne i stałe).**
-
-## Plan rozwoju
-
-<details>
-<summary><b>Kliknij, aby rozwinąć plan rozwoju</b></summary>
-
-| Wersja | Etap | Kluczowe funkcje |
+| Funkcja | Przykładowa nazwa encji | Opis |
 | :--- | :--- | :--- |
-| **v1.2.0** | **Zarządzanie Danymi** | Prognoza cen na jutro (RDN), profile taryfowe (G1x/G12), encje ceny min/max. |
-| **v1.2.1** | **Koszty Realne** | Mnożnik brutto (VAT + opłaty) konfigurowalny w UI. |
-| **v1.3.0** | **Automatyzacja** | Binary sensor "Tanie Okno" (automatyczne wykrywanie najtańszych godzin). |
-| **v1.4.0** | **Powiadomienia** | Gotowe Blueprints dla powiadomień Push i TTS. |
-| **v1.5.0** | **Analityka** | Moduł statystyk i raport oszczędności względem taryf płaskich. |
-| **v1.6.x+** | **Inteligencja** | Synergia z Forecast.Solar (optymalizacja pod produkcję PV). |
+| **Cena bieżąca** | `sensor.energy_hub_poland_cena_aktualna` | Aktualna stawka za 1 kWh (netto). |
+| **Cena jutro** | `sensor.energy_hub_poland_cena_jutro` | Atrybuty zawierają listę cen na kolejny dzień. |
+| **Min/Max** | `sensor.energy_hub_poland_cena_min_dzis` | Wartość najniższej ceny w danym dniu. |
+| **Strefa (G12)** | `sensor.energy_hub_poland_strefa_g12` | Stan: "Szczyt" / "Poza szczytem". |
+| **Koszt Dziś** | `sensor.energy_hub_poland_koszt_dzis_dynamiczna` | Ile wydałeś dzisiaj na prąd (wymaga licznika). |
+| **Bilans** | `sensor.energy_hub_poland_bilans_dynamiczna_vs_g12_dzis` | Różnica kosztów między taryfami (Tryb Porównawczy). |
+| **Rekomendacja**| `sensor.energy_hub_poland_rekomendacja_taryfy` | Sugerowana najlepsza taryfa dla Twojego domu. |
 
-</details>
+### Jak dodać do panelu Energia?
+W oficjalnym dashboardzie "Energia" w HA, w sekcji "Sieć elektryczna", jako cenę wybierz encję:
+* `sensor.energy_hub_poland_cena_aktualna` (dla taryfy dynamicznej)
+* `sensor.energy_hub_poland_cena_aktualna_g12` (dla taryfy G12)
 
-## 💬 Społeczność i wsparcie
-Masz pytania, pomysły na nowe funkcje lub chcesz pochwalić się swoim dashboardem?
-* 🏠 **Forum:** Zapraszam do wątku na forum [ArturHome](https://forum.arturhome.pl/t/integracja-ceny-dynamiczne-pge/16152/10).
-* ⭐ **GitHub:** Jeśli integracja Ci pomaga, zostaw proszę gwiazdkę – to motywuje do dalszej pracy!
-* **Standardy społeczności:** Obowiązuje nas [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+---
 
+## ❓ FAQ & Troubleshooting
 
-## 🤝 Współtworzenie
+**1. Czy ceny zawierają VAT?**
+Nie. Integracja operuje na cenach energii czynnej (netto/brutto zależnie co wpiszesz w G12, ale z API pobierane są ceny rynkowe netto). Pamiętaj, że pełny rachunek zawiera też opłaty dystrybucyjne.
 
-Chcesz pomóc w rozwoju projektu? Zapraszamy!
+**2. Jak wpisać godziny szczytu?**
+Użyj formatu zakresów oddzielonych przecinkiem, np.: `6-13,15-22` oznacza szczyt od 06:00 do 13:00 ORAZ od 15:00 do 22:00.
 
-* **Masz pomysł lub znalazłeś błąd?** Otwórz [Issue](https://github.com/AllonGit/ha_pge_dynamic/issues).
-* **Zasady współpracy:** Sprawdź nasz plik [CONTRIBUTING.md](CONTRIBUTING.md).
+---
 
-## 🛡️ Bezpieczeństwo
+## ⚖️ Licencja i Nota Prawna
 
-Jeśli znalazłeś lukę w bezpieczeństwie, prosimy o zapoznanie się z naszą polityką bezpieczeństwa w pliku [SECURITY.md](SECURITY.md).
+Integracja pobiera dane z publicznie dostępnego API PGE DataHub. Autor nie ponosi odpowiedzialności za decyzje finansowe podejmowane na podstawie wskazań sensorów.
 
-## ⚖️ Licencja
+**Projekt udostępniany na licencji Apache 2.0 z dodatkowymi zastrzeżeniami:**
 
-Projekt udostępniany na licencji **MIT**. Pełną treść znajdziesz w pliku [LICENSE](LICENSE).
+1.  **Użytek Prywatny:** Wolno Ci używać, modyfikować i instalować to oprogramowanie w celach prywatnych i edukacyjnych.
+2.  **Ochrona Komercyjna:** Wykorzystywanie unikalnej logiki porównywania taryf, algorytmów rekomendacji oraz marki "Energy Hub" w płatnych produktach, usługach doradczych lub rozwiązaniach komercyjnych **jest zabronione bez pisemnej zgody autora**.
+3.  **Znaki Towarowe:** Nazwa i logo "Energy Hub Poland" są własnością autora.
 
-## ⚠️ Nota prawna
-
-Integracja ma charakter open-source i hobbystyczny. Dane są pobierane z publicznie dostępnego API PGE DataHub. Autor nie ponosi odpowiedzialności za ewentualne błędy w danych ani decyzje finansowe podejmowane na ich podstawie. Zawsze weryfikuj dane u dostawcy energii.
+*Copyright (c) 2026 AllonGit*
