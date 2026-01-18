@@ -12,7 +12,7 @@
 ![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=license)
 
 <p align="center">
-  <img src="images/logo.png" alt="Energy Hub Poland Logo" width="600">
+  <img src="images/dark_logo.png" alt="Energy Hub Poland Logo" width="600">
 </p>
 
 ## 🌟 Features and Operation Modes
@@ -111,7 +111,7 @@ The integration retrieves data from the publicly available PGE DataHub API. The 
 ![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=licencja)
 
 <p align="center">
-  <img src="images/logo.png" alt="Energy Hub Poland Logo" width="600">
+  <img src="images/dark_logo.png" alt="Energy Hub Poland Logo" width="600">
 </p>
 
 ## 🌟 Możliwości i Tryby Pracy
