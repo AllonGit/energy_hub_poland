@@ -1,5 +1,5 @@
-# custom_components/energy_hub/__init__.py
-"""Integracja Energy Hub dla Home Assistant."""
+# custom_components/energy_hub_poland/__init__.py
+import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -7,10 +7,15 @@ from homeassistant.const import Platform
 from .coordinator import PGEDataCoordinator
 from .const import DOMAIN
 
+_LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
+async def async_setup(hass: HomeAssistant, config: dict):
+    return True
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Konfiguruje integrację na podstawie wpisu konfiguracyjnego."""
+    _LOGGER.info("Ładowanie integracji Energy Hub Poland dla wpisu: %s", entry.title)
+
     coordinator = PGEDataCoordinator(hass)
     await coordinator.async_config_entry_first_refresh()
 
@@ -23,9 +28,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Odładowuje wpis konfiguracyjny."""
+
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 async def update_listener(hass: HomeAssistant, entry: ConfigEntry):
-    """Obsługuje aktualizacje opcji konfiguracyjnych."""
+
     await hass.config_entries.async_reload(entry.entry_id)
