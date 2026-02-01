@@ -180,9 +180,9 @@ Po instalacji w systemie pojawią się encje (nazwy mogą się różnić w zale�
 
 ### Jak dodać do panelu Energia?
 W oficjalnym dashboardzie "Energia" w HA, w sekcji "Sieć elektryczna", jako cenę wybierz encję:
-* `sensor.energy_hub_poland_cena_aktualna` (dla taryfy dynamicznej)
-* `sensor.energy_hub_poland_cena_aktualna_g12` (dla taryfy G12)
-
+* `sensor.energy_hub_poland_energy_hub_poland_cena_aktualna` (dla taryfy dynamicznej)
+* `sensor.energy_hub_poland_energy_hub_poland_cena_g12w` (dla taryfy G12w)
+* `sensor.energy_hub_poland_energy_hub_poland_cena_g12` (dla teryfy G12)
 ---
 
 ## ❓ FAQ & Troubleshooting
