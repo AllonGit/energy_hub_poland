@@ -1,5 +1,4 @@
-# custom_components/energy_hub/api.py
-"""Asynchroniczny klient do API PGE DataHub."""
+# custom_components/energy_hub_poland/api.py
 import logging
 import async_timeout
 from datetime import date
@@ -9,14 +8,14 @@ from .const import API_URL
 _LOGGER = logging.getLogger(__name__)
 
 class PGEApiClient:
-    """Klient do interakcji z API PGE."""
+    
 
     def __init__(self, session):
-        """Inicjalizacja klienta API."""
+
         self._session = session
 
     async def async_get_prices(self, for_date: date):
-        """Pobiera ceny energii dla określonej daty."""
+
         date_str = for_date.strftime("%Y-%m-%d")
         url = f"{API_URL}?source=TGE&contract=Fix_1&date_from={date_str} 00:00:00&date_to={date_str} 23:59:59&limit=100"
         
