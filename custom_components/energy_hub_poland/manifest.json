@@ -1,11 +1,11 @@
 {
   "domain": "energy_hub_poland",
   "name": "Energy Hub Poland",
+  "version": "1.2.0",
+  "documentation": "https://github.com/AllonGit/energy_hub_poland",
+  "issue_tracker": "https://github.com/AllonGit/energy_hub_poland/issues",
   "codeowners": ["@AllonGit"],
   "config_flow": true,
-  "documentation": "https://github.com/AllonGit/energy_hub_poland",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/AllonGit/energy_hub_poland/issues",
-  "requirements": ["holidays"],
-  "version": "1.2.0-beta"
+  "requirements": ["holidays"]
 }
