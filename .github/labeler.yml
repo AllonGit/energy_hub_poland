@@ -1,0 +1,12 @@
+build:
+  - ".github/workflows/**/*"
+  - "pyproject.toml"
+  - ".pre-commit-config.yaml"
+
+integration:
+  - "custom_components/**/*"
+
+documentation:
+  - "README.md"
+  - "LICENSE"
+  - "doc/**/*"

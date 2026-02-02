@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Forum Artur Home
+    url: https://forum.arturhome.pl/t/integracja-energy-hub-poland-dawniej-pge-dynamic-energy/16152
+    about: Masz pytanie dotyczące konfiguracji? Zadaj je na polskim forum.
+  - name: 📖 Dokumentacja (README)
+    url: https://github.com/AllonGit/energy_hub_poland#readme
+    about: Sprawdź instrukcję instalacji i najczęstsze problemy.

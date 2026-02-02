@@ -1,0 +1,27 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+categories:
+  - title: "🚀 Nowe funkcje"
+    labels:
+      - "feature"
+      - "enhancement"
+  - title: "🐛 Poprawki błędów"
+    labels:
+      - "bug"
+      - "fix"
+  - title: "🧰 Infrastruktura / Inne"
+    labels:
+      - "chore"
+      - "build"
+      - "style"
+version-resolver:
+  major:
+    labels:
+      - "major"
+  minor:
+    labels:
+      - "minor"
+  patch:
+    labels:
+      - "patch"
+    default: true
