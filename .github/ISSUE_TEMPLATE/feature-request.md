@@ -1,13 +1,4 @@
 ---
-name: Propozycja funkcji / Feature Request
-about: Zaproponuj nową funkcjonalność dla integracji/Suggest an idea for this project
-title: ''
-labels: ''
-assignees: ''
-
----
-
----
 name: "Propozycja funkcji / Feature Request"
 about: "Zaproponuj nową funkcjonalność"
 title: "[ENHANCEMENT] "
