@@ -2,13 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * *"
 
 permissions:
   contents: read

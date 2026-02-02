@@ -3,6 +3,9 @@ name: Reusable Validation
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Code Quality (Ruff)
