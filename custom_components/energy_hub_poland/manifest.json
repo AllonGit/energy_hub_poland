@@ -1,11 +1,11 @@
 {
+  "domain": "energy_hub_poland",
+  "name": "Energy Hub Poland",
   "codeowners": ["@AllonGit"],
   "config_flow": true,
   "documentation": "https://github.com/AllonGit/energy_hub_poland",
-  "domain": "energy_hub_poland",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/AllonGit/energy_hub_poland/issues",
-  "name": "Energy Hub Poland",
   "requirements": [
     "aiohttp>=3.8.1",
     "async_timeout>=4.0.0",

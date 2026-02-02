@@ -1,22 +1,36 @@
 # custom_components/energy_hub_poland/sensor.py
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Any
 
 from homeassistant.components.sensor import (
-    SensorEntity, SensorDeviceClass, SensorStateClass, RestoreSensor
+    RestoreSensor,
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_change,
 )
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from homeassistant.helpers.event import async_track_state_change_event, async_track_time_change
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.util import dt as dt_util
 
 from .const import (
-    DOMAIN, CONF_OPERATION_MODE, CONF_ENERGY_SENSOR, CONF_SENSOR_TYPE,
-    CONF_G12_SETTINGS, CONF_G12W_SETTINGS,
-    MODE_DYNAMIC, MODE_G12, MODE_G12W, MODE_COMPARISON,
-    SENSOR_TYPE_TOTAL_INCREASING, SENSOR_TYPE_DAILY
+    CONF_ENERGY_SENSOR,
+    CONF_G12_SETTINGS,
+    CONF_G12W_SETTINGS,
+    CONF_OPERATION_MODE,
+    CONF_SENSOR_TYPE,
+    DOMAIN,
+    MODE_COMPARISON,
+    MODE_DYNAMIC,
+    MODE_G12,
+    MODE_G12W,
+    SENSOR_TYPE_DAILY,
+    SENSOR_TYPE_TOTAL_INCREASING,
 )
 from .coordinator import PGEDataCoordinator
 from .helpers import get_current_g12_price, get_current_g12w_price
@@ -24,8 +38,9 @@ from .helpers import get_current_g12_price, get_current_g12w_price
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-
+async def async_setup_entry(
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities
+):
     coordinator: PGEDataCoordinator = hass.data[DOMAIN][entry.entry_id]
     mode = entry.data.get(CONF_OPERATION_MODE)
     sensors = []
@@ -43,7 +58,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
 
 
 def setup_dynamic_sensors(coordinator: PGEDataCoordinator):
-
     return [
         CurrentPriceSensor(coordinator, "dynamic"),
         MinMaxPriceSensor(coordinator, "today", "min"),
@@ -52,13 +66,15 @@ def setup_dynamic_sensors(coordinator: PGEDataCoordinator):
         MinMaxPriceSensor(coordinator, "tomorrow", "max"),
     ]
 
-def setup_g12_sensors(coordinator: PGEDataCoordinator, entry: ConfigEntry, is_g12w: bool):
 
+def setup_g12_sensors(
+    coordinator: PGEDataCoordinator, entry: ConfigEntry, is_g12w: bool
+):
     tariff_name = "g12w" if is_g12w else "g12"
     return [CurrentPriceSensor(coordinator, tariff_name, entry.data)]
 
-def setup_comparison_sensors(coordinator: PGEDataCoordinator, entry: ConfigEntry):
 
+def setup_comparison_sensors(coordinator: PGEDataCoordinator, entry: ConfigEntry):
     sensors = [
         CurrentPriceSensor(coordinator, "dynamic"),
         CurrentPriceSensor(coordinator, "g12", entry.data),
@@ -66,18 +82,20 @@ def setup_comparison_sensors(coordinator: PGEDataCoordinator, entry: ConfigEntry
     ]
     if entry.data.get(CONF_ENERGY_SENSOR):
         sensors.append(RecommendationSensor(coordinator, entry))
-        sensors.extend([
-            SavingsSensor(coordinator, entry, "dynamic", "g12", "daily"),
-            SavingsSensor(coordinator, entry, "dynamic", "g12", "monthly"),
-            SavingsSensor(coordinator, entry, "dynamic", "g12w", "daily"),
-            SavingsSensor(coordinator, entry, "dynamic", "g12w", "monthly"),
-            SavingsSensor(coordinator, entry, "g12", "g12w", "daily"),
-            SavingsSensor(coordinator, entry, "g12", "g12w", "monthly"),
-        ])
+        sensors.extend(
+            [
+                SavingsSensor(coordinator, entry, "dynamic", "g12", "daily"),
+                SavingsSensor(coordinator, entry, "dynamic", "g12", "monthly"),
+                SavingsSensor(coordinator, entry, "dynamic", "g12w", "daily"),
+                SavingsSensor(coordinator, entry, "dynamic", "g12w", "monthly"),
+                SavingsSensor(coordinator, entry, "g12", "g12w", "daily"),
+                SavingsSensor(coordinator, entry, "g12", "g12w", "monthly"),
+            ]
+        )
     return sensors
 
-class EnergyHubEntity(CoordinatorEntity, SensorEntity):
 
+class EnergyHubEntity(CoordinatorEntity, SensorEntity):
     _attr_has_entity_name = True
 
     def __init__(self, coordinator: PGEDataCoordinator):
@@ -101,7 +119,7 @@ class RecommendationSensor(EnergyHubEntity, RestoreSensor):
         self._attr_name = "Energy Hub Poland Rekomendacja"
         self._attr_unique_id = f"{DOMAIN}_recommendation"
 
-        self._last_energy_reading: Optional[float] = None
+        self._last_energy_reading: float | None = None
         self._costs = {"dynamic": 0.0, "g12": 0.0, "g12w": 0.0}
 
     async def async_added_to_hass(self):
@@ -113,10 +131,14 @@ class RecommendationSensor(EnergyHubEntity, RestoreSensor):
 
         if self._energy_sensor_id:
             self.async_on_remove(
-                async_track_state_change_event(self.hass, [self._energy_sensor_id], self._handle_energy_change)
+                async_track_state_change_event(
+                    self.hass, [self._energy_sensor_id], self._handle_energy_change
+                )
             )
             self.async_on_remove(
-                async_track_time_change(self.hass, self._reset_state, day=1, hour=0, minute=0, second=5)
+                async_track_time_change(
+                    self.hass, self._reset_state, day=1, hour=0, minute=0, second=5
+                )
             )
 
     @callback
@@ -155,24 +177,28 @@ class RecommendationSensor(EnergyHubEntity, RestoreSensor):
             now = dt_util.now()
             prices = {
                 "dynamic": self.coordinator.data.get("today", {}).get(now.hour),
-                "g12": get_current_g12_price(now, self._config.get(CONF_G12_SETTINGS, {})),
-                "g12w": get_current_g12w_price(now, self._config.get(CONF_G12W_SETTINGS, {}))
+                "g12": get_current_g12_price(
+                    now, self._config.get(CONF_G12_SETTINGS, {})
+                ),
+                "g12w": get_current_g12w_price(
+                    now, self._config.get(CONF_G12W_SETTINGS, {})
+                ),
             }
 
             for tariff, price in prices.items():
                 if price is not None:
                     self._costs[tariff] += energy_delta * price
-            
+
             self.async_write_ha_state()
 
     @property
     def native_value(self):
         if not self._energy_sensor_id:
             return "Skonfiguruj sensor energii"
-        
+
         if all(v == 0.0 for v in self._costs.values()):
             return "Zbieranie danych..."
-            
+
         best_tariff = min(self._costs, key=self._costs.get)
         return f"Najtańsza taryfa: {best_tariff.upper()}"
 
@@ -183,15 +209,17 @@ class RecommendationSensor(EnergyHubEntity, RestoreSensor):
             "costs": {k: round(v, 2) for k, v in self._costs.items()},
             "oszczędność_g12": round(dyn_cost - self._costs.get("g12", 0.0), 2),
             "oszczędność_g12w": round(dyn_cost - self._costs.get("g12w", 0.0), 2),
-            "oszczędność_dynamiczna": 0.0
+            "oszczędność_dynamiczna": 0.0,
         }
 
-class CurrentPriceSensor(EnergyHubEntity):
 
+class CurrentPriceSensor(EnergyHubEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "PLN/kWh"
 
-    def __init__(self, coordinator: PGEDataCoordinator, tariff: str, config: Optional[Dict] = None):
+    def __init__(
+        self, coordinator: PGEDataCoordinator, tariff: str, config: dict | None = None
+    ):
         super().__init__(coordinator)
         self._tariff = tariff
         self._config = config
@@ -211,17 +239,16 @@ class CurrentPriceSensor(EnergyHubEntity):
         return None
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
-
+    def extra_state_attributes(self) -> dict[str, Any]:
         if self._tariff == "dynamic":
             return {
                 "today_prices": self.coordinator.data.get("today", {}),
-                "tomorrow_prices": self.coordinator.data.get("tomorrow", {})
+                "tomorrow_prices": self.coordinator.data.get("tomorrow", {}),
             }
         return {}
 
-class MinMaxPriceSensor(EnergyHubEntity):
 
+class MinMaxPriceSensor(EnergyHubEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "PLN/kWh"
 
@@ -242,7 +269,7 @@ class MinMaxPriceSensor(EnergyHubEntity):
         return min(prices.values()) if self._mode == "min" else max(prices.values())
 
     @property
-    def extra_state_attributes(self) -> Dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, Any]:
         prices = self.coordinator.data.get(self._day, {})
         value = self.native_value
         if not prices or value is None:
@@ -258,12 +285,17 @@ class MinMaxPriceSensor(EnergyHubEntity):
 
 
 class CostSensor(EnergyHubEntity, RestoreSensor):
-
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = "PLN"
     _attr_state_class = SensorStateClass.TOTAL
 
-    def __init__(self, coordinator: PGEDataCoordinator, entry: ConfigEntry, tariff: str, period: str):
+    def __init__(
+        self,
+        coordinator: PGEDataCoordinator,
+        entry: ConfigEntry,
+        tariff: str,
+        period: str,
+    ):
         super().__init__(coordinator)
         self._config = entry.data
         self._tariff = tariff
@@ -274,7 +306,7 @@ class CostSensor(EnergyHubEntity, RestoreSensor):
         self._attr_name = f"Energy Hub Poland Koszt {tariff.upper()} {'Dziś' if period == 'daily' else 'Miesiąc'}"
         self._attr_unique_id = f"{DOMAIN}_cost_{tariff}_{period}"
 
-        self._last_energy_reading: Optional[float] = None
+        self._last_energy_reading: float | None = None
         self._native_value = 0.0
 
     async def async_added_to_hass(self):
@@ -283,15 +315,18 @@ class CostSensor(EnergyHubEntity, RestoreSensor):
             self._native_value = float(last_state.state)
 
         self.async_on_remove(
-            async_track_state_change_event(self.hass, [self._energy_sensor_id], self._handle_energy_change)
+            async_track_state_change_event(
+                self.hass, [self._energy_sensor_id], self._handle_energy_change
+            )
         )
         self.async_on_remove(
-            async_track_time_change(self.hass, self._reset_state, hour=0, minute=0, second=5)
+            async_track_time_change(
+                self.hass, self._reset_state, hour=0, minute=0, second=5
+            )
         )
 
     @callback
     def _reset_state(self, now: datetime):
-
         if self._period == "daily" or (self._period == "monthly" and now.day == 1):
             self._native_value = 0.0
             self.async_write_ha_state()
@@ -341,24 +376,34 @@ class CostSensor(EnergyHubEntity, RestoreSensor):
     def native_value(self):
         return round(self._native_value, 2) if self._native_value is not None else None
 
-class SavingsSensor(CostSensor):
 
-    def __init__(self, coordinator: PGEDataCoordinator, entry: ConfigEntry, base_tariff: str, compare_tariff: str, period: str):
+class SavingsSensor(CostSensor):
+    def __init__(
+        self,
+        coordinator: PGEDataCoordinator,
+        entry: ConfigEntry,
+        base_tariff: str,
+        compare_tariff: str,
+        period: str,
+    ):
         super().__init__(coordinator, entry, base_tariff, period)
         self._base_tariff = base_tariff
         self._compare_tariff = compare_tariff
 
         self._attr_name = f"Energy Hub Poland Bilans {base_tariff.upper()} vs {compare_tariff.upper()} {'Dziś' if period == 'daily' else 'Miesiąc'}"
-        self._attr_unique_id = f"{DOMAIN}_savings_{base_tariff}_vs_{compare_tariff}_{period}"
+        self._attr_unique_id = (
+            f"{DOMAIN}_savings_{base_tariff}_vs_{compare_tariff}_{period}"
+        )
 
     def _get_current_price(self):
-
         now = dt_util.now()
 
         price_map = {
             "dynamic": self.coordinator.data.get("today", {}).get(now.hour),
             "g12": get_current_g12_price(now, self._config.get(CONF_G12_SETTINGS, {})),
-            "g12w": get_current_g12w_price(now, self._config.get(CONF_G12W_SETTINGS, {}))
+            "g12w": get_current_g12w_price(
+                now, self._config.get(CONF_G12W_SETTINGS, {})
+            ),
         }
 
         base_price = price_map.get(self._base_tariff)
