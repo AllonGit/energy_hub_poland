@@ -1,5 +1,5 @@
 ## Description
-Please include a summary of the change and which issue is fixed. 
+Please include a summary of the change and which issue is fixed.
 
 ## Type of change
 - [ ] Bug fix (non-breaking change which fixes an issue)
@@ -8,7 +8,7 @@ Please include a summary of the change and which issue is fixed.
 - [ ] Documentation update
 
 ## How Has This Been Tested?
-Please describe the tests that you ran to verify your changes. 
+Please describe the tests that you ran to verify your changes.
 - [ ] Tested in Home Assistant core version: [e.g. 2024.1.0]
 - [ ] Verified sensor data matches PGE DataHub prices.
 

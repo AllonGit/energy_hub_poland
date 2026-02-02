@@ -1,0 +1,13 @@
+name: Release Validation
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-release:
+    uses: ./.github/workflows/reusable-validation.yml

@@ -61,7 +61,7 @@ The wizard will guide you through the configuration depending on the selected mo
 
 ## 💡 Key Sensors
 
-After installation, the following entities will appear (names may vary slightly depending on config). 
+After installation, the following entities will appear (names may vary slightly depending on config).
 *Note: Entity friendly names are currently generated in Polish.*
 
 | Function | Example Entity ID | Description |
@@ -108,9 +108,10 @@ The integration retrieves data from the publicly available PGE DataHub API. The 
 
 **Energy Hub Poland** to zaawansowana integracja, która nie tylko pobiera ceny energii, ale działa jak Twój osobisty analityk. Niezależnie od tego, czy masz taryfę dynamiczną, czy stałą (G12/G12w), system policzy Twoje realne koszty i podpowie, jak oszczędzać.
 
-![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![version](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?label=wersja)
-![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=licencja)
+[![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge)](https://github.com/AllonGit/energy_hub_poland/releases)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/AllonGit/energy_hub_poland/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/AllonGit/energy_hub_poland/actions)
+[![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge)](LICENSE)
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 

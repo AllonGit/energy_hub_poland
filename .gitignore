@@ -1,17 +1,47 @@
-# Python
+# --- Python ---
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.pytest_cache/
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+.VSCodeCounter/
 
-# Home Assistant
+# --- Tools (Ruff, Pytest, Mypy) ---
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Home Assistant ---
+config/
 *.log
 *.db
 *.db-shm
 *.db-wal
+.HA_VERSION
 
-# System
-.DS_Store
+# --- VS Code & System ---
 .vscode/
-.idea/
+.DS_Store
+Thumbs.db
+*.swp
