@@ -11,7 +11,7 @@ jobs:
     name: Code Quality (Ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install Ruff
         run: pip install ruff
       - name: Run Ruff Check
@@ -23,7 +23,7 @@ jobs:
     name: Hassfest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Hassfest
         uses: home-assistant/actions/hassfest@master
 
@@ -31,7 +31,7 @@ jobs:
     name: HACS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: HACS validation
         uses: hacs/action@main
         with:
