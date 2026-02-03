@@ -1,209 +1,223 @@
 # ⚡ Energy Hub Poland
-### Twój inteligentny asystent kosztów energii w Home Assistant.
+### Twój inteligentny asystent kosztów energii w Home Assistant
 
-### Język/Language
-<details>
-<summary> click to expand </summary>
+![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge&color=blue)
+![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge&color=green)
+![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=for-the-badge)
+![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
 
-**Energy Hub Poland** is an advanced integration that does more than just fetch energy prices. It acts as your personal energy analyst. Whether you use a dynamic tariff (RCE) or a fixed time-of-use tariff (G12/G12w), this system calculates your real costs and suggests how to save money.
+[![Otwórz repozytorium w HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 
-![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![version](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?label=version)
-![license](https://img.shields.io/github/license/AllonGit/energy_hub_poland?label=license)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
+#### For the English version click [here](README_EN.md)
 
 <p align="center">
-  <img src="images/dark_logo.png" alt="Energy Hub Poland Logo" width="600">
+  <img src="brands/logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
-## 🌟 Features and Operation Modes
-
-The integration offers 4 modes of operation, selected during configuration:
-
-### 1. 📉 Dynamic Mode (RCE / Market Prices)
-For users billed according to hourly market rates (PGE DataHub / TGE).
-* **Current Price:** Refreshed hourly.
-* **Forecast:** Full price schedule for "Tomorrow" (available after ~2:00 PM).
-* **Statistics:** Automatic detection of the lowest and highest prices of the day.
-
-### 2. 🏠 G12 / G12w Modes (Time-of-Use Tariffs)
-Perfect reflection of your contract with the operator.
-* **Flexible Zones:** You define your own peak hours (e.g., `6-13,15-22`).
-* **Auto-Holidays (G12w):** The integration automatically recognizes weekends and **Polish statutory holidays** as off-peak (cheap) zones (uses the `holidays` library).
-* **Visualization:** A `Zone` sensor shows a clear status: "Peak" (Szczyt) or "Off-peak" (Poza szczytem).
-
-### 3. 📊 Comparison Mode (Savings Simulator)
-**The most powerful feature.** It allows you to check the profitability of changing tariffs based on your real usage.
-* The system calculates costs in parallel for **Dynamic**, **G12**, and **G12w** tariffs.
-* **Balance Sensor:** Shows in PLN (Polish Złoty) how much you saved (or lost) today compared to another tariff.
-* **Tariff Recommendation:** An intelligent sensor that analyzes your usage and suggests: *"For you, the cheapest tariff is G12w"*.
-
 ---
 
-## 🚀 Installation
+**Energy Hub Poland** to zaawansowana integracja dla Home Assistant, zaprojektowana specjalnie dla polskiego rynku energii. Pozwala na monitorowanie cen prądu, analizę kosztów oraz optymalizację zużycia energii w oparciu o rzeczywiste taryfy (w tym dynamiczne RCE).
 
-### Step 1: HACS
-1.  Open **HACS** -> **Integrations**.
-2.  Menu (3 dots) -> **Custom repositories**.
-3.  Add URL: `https://github.com/AllonGit/energy_hub_poland`
-4.  Download the integration and restart Home Assistant.
-
-### Step 2: Configuration
-Go to **Settings** -> **Devices & Services** -> **Add Integration** -> **Energy Hub Poland**.
-
-The wizard will guide you through the configuration depending on the selected mode:
-1.  **Select Mode:** Dynamic, G12, G12w, or Comparison.
-2.  **Prices and Hours (for G12/G12w/Comparison):** Enter net rates and peak hours (format: `6-13,15-22`).
-3.  **Energy Sensor (Optional):** Select your electricity meter (kWh, `total_increasing` type) to unlock cost calculations in PLN.
-
----
-
-## 💡 Key Sensors
-
-After installation, the following entities will appear (names may vary slightly depending on config).
-*Note: Entity friendly names are currently generated in Polish.*
-
-| Function | Example Entity ID | Description |
-| :--- | :--- | :--- |
-| **Current Price** | `sensor.energy_hub_poland_cena_aktualna` | Current rate for 1 kWh (Net). |
-| **Tomorrow's Price** | `sensor.energy_hub_poland_cena_jutro` | Attributes contain the price list for the next day. |
-| **Min/Max** | `sensor.energy_hub_poland_cena_min_dzis` | The lowest price value for the current day. |
-| **Zone (G12)** | `sensor.energy_hub_poland_strefa_g12` | Status: "Szczyt" (Peak) / "Poza szczytem" (Off-peak). |
-| **Cost Today** | `sensor.energy_hub_poland_koszt_dzis_dynamiczna` | How much you spent on electricity today (requires meter). |
-| **Balance** | `sensor.energy_hub_poland_bilans_dynamiczna_vs_g12_dzis` | Cost difference between tariffs (Comparison Mode). |
-| **Recommendation**| `sensor.energy_hub_poland_rekomendacja_taryfy` | Suggested best tariff for your household. |
-
-### How to add to the Energy Dashboard?
-In the official HA "Energy" dashboard settings, under "Grid consumption", select the price entity:
-* `sensor.energy_hub_poland_cena_aktualna` (for Dynamic tariff)
-* `sensor.energy_hub_poland_cena_aktualna_g12` (for G12 tariff)
-
----
-
-## ❓ FAQ & Troubleshooting
-
-**1. Do the prices include VAT?**
-No. The integration operates on active energy prices (Net). Market prices fetched from the API are Net. Remember that your final bill also includes distribution fees and taxes.
-
-**2. How to enter peak hours?**
-Use a comma-separated range format. For example: `6-13,15-22` means peak hours are from 06:00 to 13:00 AND from 15:00 to 22:00.
-
----
-
-## ⚖️ License and Legal Notice
-
-The integration retrieves data from the publicly available PGE DataHub API. The author is not responsible for financial decisions made based on sensor readings.
-
-**Project is released under the Apache 2.0 License with the following additional restrictions:**
-
-1.  **Private Use:** You are free to use, modify, and install this software for private and educational purposes.
-2.  **Commercial Restriction:** The use of the unique tariff comparison logic, recommendation algorithms, and the "Energy Hub" brand in paid products, commercial advisory services, or closed systems **is prohibited without the written consent of the author**.
-3.  **Trademarks:** The name "Energy Hub Poland" and associated logos are trademarks of the author.
-
-*Copyright (c) 2026 AllonGit*
-</p>
-</details>
-
-
-**Energy Hub Poland** to zaawansowana integracja, która nie tylko pobiera ceny energii, ale działa jak Twój osobisty analityk. Niezależnie od tego, czy masz taryfę dynamiczną, czy stałą (G12/G12w), system policzy Twoje realne koszty i podpowie, jak oszczędzać.
-
-[![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge)](https://github.com/AllonGit/energy_hub_poland/releases)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/AllonGit/energy_hub_poland/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/AllonGit/energy_hub_poland/actions)
-[![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge)](LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
-
-<p align="center">
-  <img src="images/dark_logo.png" alt="Energy Hub Poland Logo" width="600">
-</p>
+Unikalną cechą jest **Tryb Porównania**, który analizuje Twoje zużycie i podpowiada, która taryfa byłaby dla Ciebie najbardziej opłacalna.
 
 ## 🌟 Możliwości i Tryby Pracy
 
-Integracja oferuje 4 tryby pracy, wybierane podczas konfiguracji:
+Integracja obsługuje cztery główne tryby operacyjne:
 
 ### 1. 📉 Tryb Dynamiczny (RCE)
-Dla użytkowników rozliczających się wg stawek godzinowych z giełdy (PGE DataHub).
-* **Aktualna cena:** Odświeżana co godzinę.
-* **Prognoza:** Pełny harmonogram cen na "Jutro" (dostępny po godz. 14:00).
-* **Statystyki:** Automatyczne wykrywanie najniższej i najwyższej ceny dnia.
+Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
+* Idealny dla prosumentów na zasadach net-billing.
+* Ceny na dzień kolejny są dostępne automatycznie po godzinie 14:00.
+* Prezentuje ceny netto (bez VAT i opłat dystrybucyjnych).
 
-### 2. 🏠 Tryby G12 / G12w (Taryfy Strefowe)
-Idealne odwzorowanie Twojej umowy z operatorem.
-* **Elastyczne strefy:** Sam definiujesz godziny szczytu (np. `6-13,15-22`).
-* **Auto-Święta (G12w):** Integracja automatycznie rozpoznaje weekendy oraz **polskie święta ustawowe** jako strefę tanią (wymaga biblioteki `holidays`).
-* **Wizualizacja:** Sensor `Strefa` pokazuje czytelny status: "Szczyt" lub "Poza szczytem".
+### 2. 🏠 Tryb G12
+Klasyczna taryfa dwustrefowa zdefiniowana przez użytkownika.
+* Możliwość ręcznego wprowadzania godzin szczytowych (np. `6-13,15-22`).
+* Śledzenie kosztów w strefie drogiej i taniej.
 
-### 3. 📊 Tryb Porównawczy (Symulator Oszczędności)
-**Najpotężniejsza funkcja integracji.** Pozwala sprawdzić opłacalność zmiany taryfy na żywym organizmie.
-* System liczy koszty równolegle dla **Dynamicznej**, **G12** i **G12w**.
-* **Sensor Bilansu:** Pokazuje w PLN, ile zyskałeś (lub straciłeś) danego dnia względem innej taryfy.
-* **Rekomendacja Taryfy:** Inteligentny sensor, który analizuje Twoje zużycie i wskazuje: *"Dla Ciebie najtańsza jest taryfa G12w"*.
+### 3. 🏖️ Tryb G12w (Weekendowy)
+Rozszerzona taryfa dwustrefowa, uwzględniająca polski kalendarz świąt.
+* Automatycznie traktuje **soboty, niedziele oraz polskie święta ustawowe** jako strefę pozaszczytową (tanią).
+* Wykorzystuje bibliotekę `holidays` do precyzyjnego wykrywania dni wolnych od pracy w Polsce.
+
+### 4. 📊 Tryb Porównania (Eksperymentalny)
+Najpotężniejsza funkcja integracji.
+* Oblicza koszty zużycia energii dla **wszystkich trzech taryf jednocześnie** w czasie rzeczywistym.
+* Wskazuje potencjalne oszczędności przy zmianie taryfy.
+* Wymaga podłączenia licznika energii (encyja `kWh`, typ `total_increasing`).
 
 ---
 
 ## 🚀 Instalacja
 
-### Krok 1: HACS
-1.  Otwórz **HACS** -> **Integracje**.
-2.  Menu (3 kropki) -> **Niestandardowe repozytoria**.
-3.  Dodaj URL: `https://github.com/AllonGit/energy_hub_poland`
-4.  Pobierz integrację i zrestartuj Home Assistant.
+### Krok 1: Instalacja przez HACS
 
-Lub kliknij w ten przycisk
-
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
+1. Otwórz **HACS** w Home Assistant.
+2. Kliknij w menu (trzy kropki) w prawym górnym rogu i wybierz **Niestandardowe repozytoria**.
+3. Wklej adres URL: `https://github.com/AllonGit/energy_hub_poland`.
+4. Wybierz typ: **Integration**.
+5. Kliknij **Pobierz**.
+6. **Zrestartuj Home Assistant**.
 
 ### Krok 2: Konfiguracja
-Wejdź w **Ustawienia** -> **Urządzenia oraz usługi** -> **Dodaj integrację** -> **Energy Hub Poland**.
 
-Kreator poprowadzi Cię przez konfigurację zależną od wybranego trybu:
-1.  **Wybór Trybu:** Dynamiczny, G12, G12w lub Porównawczy.
-2.  **Ceny i Godziny (dla G12/G12w/Porównawczego):** Podaj stawki netto i godziny szczytu (format: `6-13,15-22`).
-3.  **Sensor Energii (Opcjonalny):** Wskaż swój licznik zużycia (kWh, typ `total_increasing`), aby odblokować obliczanie kosztów w złotówkach.
+1. Przejdź do **Ustawienia** -> **Urządzenia i usługi**.
+2. Kliknij przycisk **Dodaj integrację**.
+3. Wyszukaj **Energy Hub Poland**.
+4. Postępuj zgodnie z kreatorem konfiguracji:
+   * Wybierz domyślny tryb pracy.
+   * Wprowadź swój licznik energii (wymagany do obliczania kosztów).
+   * Zdefiniuj godziny szczytu (jeśli używasz G12).
+
+---
+
+## 💡 Przykłady Użycia
+
+Oto jak możesz wykorzystać Energy Hub Poland w swoich automatyzacjach:
+
+* **Inteligentne ładowanie:** Uruchom ładowarkę EV tylko wtedy, gdy cena w taryfie dynamicznej spadnie poniżej ustalonego progu.
+* **Powiadomienia o oszczędnościach:** Otrzymuj powiadomienie na koniec miesiąca z informacją z Trybu Porównania: *"Gdybyś używał taryfy G12w, zaoszczędziłbyś 50 PLN w tym miesiącu"*.
+* **Kolorowe oświetlenie:** Zmień kolor lampy w salonie na czerwony, gdy aktualna cena energii jest w najdroższym przedziale dnia.
 
 ---
 
-## 💡 Kluczowe Sensory
+## 📈 Wizualizacja - ApexCharts
 
-Po instalacji w systemie pojawią się encje (nazwy mogą się różnić w zależności od konfiguracji):
+Aby zwizualizować ceny dynamiczne (RCE) na wykresie, zalecamy użycie karty **ApexCharts**. Poniżej znajduje się gotowy kod konfiguracyjny.
 
-| Funkcja | Przykładowa nazwa encji | Opis |
-| :--- | :--- | :--- |
-| **Cena bieżąca** | `sensor.energy_hub_poland_cena_aktualna` | Aktualna stawka za 1 kWh (netto). |
-| **Cena jutro** | `sensor.energy_hub_poland_cena_jutro` | Atrybuty zawierają listę cen na kolejny dzień. |
-| **Min/Max** | `sensor.energy_hub_poland_cena_min_dzis` | Wartość najniższej ceny w danym dniu. |
-| **Strefa (G12)** | `sensor.energy_hub_poland_strefa_g12` | Stan: "Szczyt" / "Poza szczytem". |
-| **Koszt Dziś** | `sensor.energy_hub_poland_koszt_dzis_dynamiczna` | Ile wydałeś dzisiaj na prąd (wymaga licznika). |
-| **Bilans** | `sensor.energy_hub_poland_bilans_dynamiczna_vs_g12_dzis` | Różnica kosztów między taryfami (Tryb Porównawczy). |
-| **Rekomendacja**| `sensor.energy_hub_poland_rekomendacja_taryfy` | Sugerowana najlepsza taryfa dla Twojego domu. |
+**Instrukcja:**
+1. Upewnij się, że masz zainstalowany dodatek [ApexCharts Card](https://github.com/RomRider/apexcharts-card) z HACS.
+2. Dodaj nową kartę "Manual" na swoim dashboardzie Lovelace.
+3. Wklej poniższy kod:
 
-### Jak dodać do panelu Energia?
-W oficjalnym dashboardzie "Energia" w HA, w sekcji "Sieć elektryczna", jako cenę wybierz encję:
-* `sensor.energy_hub_poland_energy_hub_poland_cena_aktualna` (dla taryfy dynamicznej)
-* `sensor.energy_hub_poland_energy_hub_poland_cena_g12w` (dla taryfy G12w)
-* `sensor.energy_hub_poland_energy_hub_poland_cena_g12` (dla teryfy G12)
----
+```yaml
+type: custom:apexcharts-card
+experimental:
+  color_threshold: true
+header:
+  show: true
+  title: Ceny Energii (Dziś + Jutro)
+  show_states: true
+  colorize_states: true
+  standard_format: false
+now:
+  show: true
+  label: TERAZ
+  color: "#29B6F6"
+graph_span: 48h
+span:
+  start: day
+yaxis:
+  - min: 0
+    decimals: 2
+    apex_config:
+      forceNiceScale: true
+apex_config:
+  stroke:
+    curve: smooth
+    width: 2
+  xaxis:
+    labels:
+      format: HH:mm
+  annotations:
+    xaxis:
+      - x: <%= new Date().setHours(24,0,0,0) %>
+        strokeDashArray: 4
+        borderColor: "#e74c3c"
+        borderWidth: 2
+        label:
+          text: JUTRO
+          style:
+            color: "#fff"
+            background: "#e74c3c"
+series:
+  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+    name: Aktualna
+    color: "#03A9F4"
+    show:
+      in_header: true
+      in_chart: false
+  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_minimalna_dzis
+    name: Min Dziś
+    color: "#00E676"
+    show:
+      in_header: true
+      in_chart: false
+  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_maksymalna_dzis
+    name: Max Dziś
+    color: "#FF1744"
+    show:
+      in_header: true
+      in_chart: false
+  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+    name: Cena
+    type: area
+    show:
+      in_header: false
+    color_threshold:
+      - value: 0
+        color: "#2ecc71"
+      - value: 0.5
+        color: "#f39c12"
+      - value: 0.7
+        color: "#e74c3c"
+    data_generator: |
+      if (!entity.attributes.today_prices) return [];
+      const data = [];
+      const startTs = new Date().setHours(0, 0, 0, 0);
+      for (const [h, p] of Object.entries(entity.attributes.today_prices)) {
+        data.push([startTs + (parseInt(h) * 3600000), p]);
+      }
+      const tom = entity.attributes.tomorrow_prices || {};
+      for (const [h, p] of Object.entries(tom)) {
+        data.push([startTs + 86400000 + (parseInt(h) * 3600000), p]);
+      }
+      return data;
+```
 
-## ❓ FAQ & Troubleshooting
+## ⚡ Integracja z Panelem Energia
+Aby Home Assistant poprawnie liczył koszty w oficjalnym panelu Energia:
 
-**1. Czy ceny zawierają VAT?**
-Nie. Integracja operuje na cenach energii czynnej (netto/brutto zależnie co wpiszesz w G12, ale z API pobierane są ceny rynkowe netto). Pamiętaj, że pełny rachunek zawiera też opłaty dystrybucyjne.
+1. Przejdź do Ustawienia -> Pulpity nawigacyjne -> Energia.
 
-**2. Jak wpisać godziny szczytu?**
-Użyj formatu zakresów oddzielonych przecinkiem, np.: `6-13,15-22` oznacza szczyt od 06:00 do 13:00 ORAZ od 15:00 do 22:00.
+2. W sekcji Zużycie sieci, edytuj swoje źródło energii (licznik).
 
----
+3. W polu Użyj encji z aktualną ceną wybierz: sensor.energy_hub_current_price.
+
+4. Zapisz zmiany.
+
+<details>
+<summary>🚀 Kliknij, aby zobaczyć planowane funkcje (Roadmap)</summary>
+
+### 🟢 Wersja 1.2.1 (W przygotowaniu)
+* **Ceny Brutto dla RCE:** Opcja automatycznego doliczania VAT (23%) do cen rynkowych.
+* **Wybór Operatora:** Możliwość wyboru (np. PGE, Tauron, Enea) w celu dopasowania stawek dystrybucyjnych.
+
+### 🟢Wersja 1.2.2 (W przygotowaniu)
+
+* **Obsługa Taryfy G11:** Dodanie podstawowej taryfy jednostrefowej do Trybu Porównawczego (na prośbę społeczności).
+
+### 🟡 Wersja 1.3.0 (W przygotowaniu)
+* **Bezpośrednie API PSE:** Przejście na oficjalne źródło danych Polskich Sieci Elektroenergetycznych dla większej stabilności.
+
+</details>
+
+## 📖 Dokumentacja i Pomoc
+Więcej szczegółów znajdziesz w dokumentacji:
+
+🛠️ [Pełna instrukcja konfiguracji](docs/setup.md) – szczegółowy opis parametrów i opcji.
+
+🔧 [Rozwiązywanie problemów](docs/troubleshooting.md) – najczęstsze błędy i sposoby ich naprawy.
+
+🐛 [Zgłaszanie błędów](https://github.com/AllonGit/energy_hub_poland/issues) – jeśli znajdziesz błąd, zgłoś go tutaj.
+
+💬 [Dyskusje](https://github.com/AllonGit/energy_hub_poland/discussions) – masz pomysł na nową funkcję? Napisz!
 
 ## ⚖️ Licencja i Nota Prawna
+Ten projekt jest licencjonowany na podstawie licencji **Apache 2.0**.
 
-Integracja pobiera dane z publicznie dostępnego API PGE DataHub. Autor nie ponosi odpowiedzialności za decyzje finansowe podejmowane na podstawie wskazań sensorów.
+**Ograniczenie użytku komercyjnego:** Unikalna logika porównywania taryf (Comparison Mode) oraz algorytmy rekomendacji są udostępniane wyłącznie do użytku prywatnego i niekomercyjnego. Wykorzystywanie tych konkretnych modułów w produktach komercyjnych bez zgody autora jest zabronione.
 
-**Projekt udostępniany na licencji Apache 2.0 z dodatkowymi zastrzeżeniami:**
+Autorem integracji jest **AllonGit**. Dane rynkowe (RCE) pochodzą z publicznych API operatorów energetycznych.
 
-1.  **Użytek Prywatny:** Wolno Ci używać, modyfikować i instalować to oprogramowanie w celach prywatnych i edukacyjnych.
-2.  **Ochrona Komercyjna:** Wykorzystywanie unikalnej logiki porównywania taryf, algorytmów rekomendacji oraz marki "Energy Hub" w płatnych produktach, usługach doradczych lub rozwiązaniach komercyjnych **jest zabronione bez pisemnej zgody autora**.
-3.  **Znaki Towarowe:** Nazwa i logo "Energy Hub Poland" są własnością autora.
-
-*Copyright (c) 2026 AllonGit*
+*© 2026 AllonGit*

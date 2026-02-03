@@ -1,16 +1,16 @@
-# Contributing to PGE Dynamic Prices
+# Contributing to Energy Hub Poland
 
-Thank you for considering contributing to this project! 
+Thank you for considering contributing to this project!
 
 ## How Can I Contribute?
 
 ### Reporting Bugs
 * Check if the issue is already reported in the **Issues** tab.
-* If not, open a new issue. Please include logs and steps to reproduce the bug.
+* If not, open a new issue using the provided template. Please include Home Assistant logs.
 
 ### Suggesting Enhancements
-* Open an issue with the "enhancement" tag.
-* Describe the feature and why it would be helpful for Home Assistant users.
+* Open an issue with the `enhancement` tag.
+* Describe the feature and why it would be helpful for the community.
 
 ### Pull Requests
 1. Fork the repository.
