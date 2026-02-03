@@ -1,5 +1,10 @@
 name-template: "v$RESOLVED_VERSION"
 tag-template: "v$RESOLVED_VERSION"
+
+template: |
+  ## 🚀 Co nowego?
+  $CHANGES
+
 categories:
   - title: "🚀 Nowe funkcje"
     labels:
@@ -14,6 +19,7 @@ categories:
       - "chore"
       - "build"
       - "style"
+
 version-resolver:
   major:
     labels:
