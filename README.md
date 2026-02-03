@@ -1,5 +1,5 @@
 # ⚡ Energy Hub Poland
-### Twój inteligentny asystent kosztów energii w Home Assistant
+## Twój inteligentny asystent kosztów energii w Home Assistant
 
 ![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge&color=blue)
 ![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge&color=green)
@@ -27,7 +27,6 @@ Integracja obsługuje cztery główne tryby operacyjne:
 ### 1. 📉 Tryb Dynamiczny (RCE)
 Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
 * Idealny dla prosumentów na zasadach net-billing.
-* Ceny na dzień kolejny są dostępne automatycznie po godzinie 14:00.
 * Prezentuje ceny netto (bez VAT i opłat dystrybucyjnych).
 
 ### 2. 🏠 Tryb G12

@@ -1,5 +1,5 @@
 # ⚡ Energy Hub Poland
-### Your intelligent energy cost assistant for Home Assistant
+## Your intelligent energy cost assistant for Home Assistant
 
 ![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=flat-square&color=blue)
 ![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=flat-square&color=green)
@@ -25,7 +25,6 @@ The integration supports four main operational modes:
 ### 1. 📉 Dynamic Mode (RCE)
 Fetches hourly market rates directly from PSE/TGE (Polish Power Exchange).
 * Perfect for prosumers on net-billing.
-* Next-day prices are automatically available after 14:00 (2:00 PM).
 * Displays net prices (excluding VAT and distribution fees).
 
 ### 2. 🏠 G12 Mode
@@ -185,11 +184,11 @@ In the Use an entity with current price field, select: sensor.energy_hub_current
 Save changes.
 
 ### 📖 Documentation and Help
-I invite you to the [forum]()
+I invite you to the [forum](https://community.home-assistant.io/t/custom-component-pge-datahub-poland-dynamic-electricity-prices/970823)
 
-Found a bug? Report it in the [Issues]().
+Found a bug? Report it in the [Issues](https://github.com/AllonGit/energy_hub_poland/issues).
 
-Discussions and feature requests: [Discussions]().
+Discussions and feature requests: [Discussions](https://github.com/AllonGit/energy_hub_poland/discussions).
 
 ### ⚖️ License and Legal Notice
 This project is licensed under the **Apache 2.0** license.
@@ -198,4 +197,4 @@ Commercial Use Restriction: The unique tariff comparison logic (Comparison Mode)
 
 Created by AllonGit. Market data (RCE) is sourced from public APIs of energy operators.
 
-© 2026 AllonGit
+*© 2026 AllonGit*
