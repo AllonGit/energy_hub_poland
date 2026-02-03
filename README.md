@@ -82,6 +82,10 @@ Oto jak możesz wykorzystać Energy Hub Poland w swoich automatyzacjach:
 
 ## 📈 Wizualizacja - ApexCharts
 
+<p align="center">
+  <img src="images/ApexChart.png" width="400" alt="Energy Hub Price Chart">
+</p>
+
 Aby zwizualizować ceny dynamiczne (RCE) na wykresie, zalecamy użycie karty **ApexCharts**. Poniżej znajduje się gotowy kod konfiguracyjny.
 
 **Instrukcja:**
