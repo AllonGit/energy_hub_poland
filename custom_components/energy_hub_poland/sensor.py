@@ -183,7 +183,7 @@ class RecommendationSensor(EnergyConsumerEntity):
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_icon = "mdi:lightbulb-auto"
-    _attr_options = ["DYNAMICZNA", "G12", "G12W", "Brak danych"]
+    _attr_options = ["dynamiczna", "g12", "g12w", "brak_danych"]
 
     def __init__(
         self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry
@@ -245,9 +245,9 @@ class RecommendationSensor(EnergyConsumerEntity):
         try:
             prices = self._get_tariff_prices()
             mapping = {
-                "DYNAMICZNA": prices.get("dynamic"),
-                "G12": prices.get("g12"),
-                "G12W": prices.get("g12w"),
+                "dynamiczna": prices.get("dynamic"),
+                "g12": prices.get("g12"),
+                "g12w": prices.get("g12w"),
             }
             # Filter out None values and ensure they are floats
             filtered = {}
@@ -259,14 +259,14 @@ class RecommendationSensor(EnergyConsumerEntity):
                         continue
 
             if not filtered:
-                return "Brak danych"
+                return "brak_danych"
 
             # native_value must return one of self._attr_options exactly
             cheapest = min(filtered, key=lambda k: filtered[k])
             return str(cheapest)
         except Exception as err:
             _LOGGER.error("Critical error in RecommendationSensor state: %s", err)
-            return "Brak danych"
+            return "brak_danych"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

@@ -84,10 +84,10 @@
       "recommendation": {
         "name": "Rekomendacja",
         "state": {
-          "DYNAMICZNA": "Taryfa dynamiczna",
-          "G12": "Taryfa G12",
-          "G12W": "Taryfa G12w",
-          "Brak danych": "Brak danych"
+          "dynamiczna": "Taryfa dynamiczna",
+          "g12": "Taryfa G12",
+          "g12w": "Taryfa G12w",
+          "brak_danych": "Brak danych"
         }
       },
       "current_price_dynamic": { "name": "Aktualna cena DYNAMICZNA" },
