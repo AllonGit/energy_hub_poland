@@ -1,4 +1,4 @@
-# custom_components/energy_hub_poland/const.py
+"""Constants for the Energy Hub Poland integration."""
 
 DOMAIN = "energy_hub_poland"
 API_URL = "https://datahub.gkpge.pl/api/tge/quote"

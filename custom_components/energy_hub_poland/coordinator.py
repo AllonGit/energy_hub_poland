@@ -4,39 +4,47 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
-from .api import PGEApiClient
+from .api import EnergyHubApiClient
 from .const import DOMAIN
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger(__package__)
 
 STORAGE_KEY = f"{DOMAIN}_cache"
 STORAGE_VERSION = 1
 
 
-class PGEDataCoordinator(DataUpdateCoordinator):
-    def __init__(self, hass):
+class EnergyHubDataCoordinator(DataUpdateCoordinator):
+    """Class to manage fetching Energy Hub data."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        """Initialize the coordinator."""
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
             update_interval=timedelta(minutes=5),
         )
-        self.api_client = PGEApiClient(async_get_clientsession(hass))
+        self.api_client = EnergyHubApiClient(async_get_clientsession(hass))
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._cache_loaded = False
 
-        self._internal_data = {
+        self._internal_data: dict[str, Any] = {
             "today": None,
             "today_date": None,
             "tomorrow": None,
             "tomorrow_date": None,
         }
+        self.last_update_time: datetime | None = None
+        self.api_connected: bool = True
 
     async def _fetch_with_retries(self, fetch_date: date) -> dict[int, float] | None:
+        """Fetch data from the API with retries."""
         api_query_date = fetch_date - timedelta(days=1)
 
         for attempt in range(10):
@@ -51,8 +59,11 @@ class PGEDataCoordinator(DataUpdateCoordinator):
 
             if parsed_prices:
                 _LOGGER.info("Pomyślnie pobrano dane dla %s", fetch_date)
+                self.api_connected = True
+                self.last_update_time = dt_util.utcnow()
                 return parsed_prices
 
+            self.api_connected = False
             _LOGGER.warning(
                 "Nie udało się pobrać danych dla %s w próbie %d. Ponawiam za 30 sekund.",
                 fetch_date,
@@ -66,7 +77,7 @@ class PGEDataCoordinator(DataUpdateCoordinator):
         return None
 
     async def _async_update_data(self) -> dict[str, Any]:
-        ""
+        """Fetch data from the API."""
         if not self._cache_loaded:
             await self._load_cache()
             self._cache_loaded = True
@@ -85,12 +96,10 @@ class PGEDataCoordinator(DataUpdateCoordinator):
                 "Wykryto zmianę dnia. Przenoszenie danych dla %s do dnia dzisiejszego.",
                 self._internal_data["tomorrow_date"],
             )
-            self._internal_data = {
-                "today": self._internal_data["tomorrow"],
-                "today_date": self._internal_data["tomorrow_date"],
-                "tomorrow": None,
-                "tomorrow_date": None,
-            }
+            self._internal_data["today"] = self._internal_data["tomorrow"]
+            self._internal_data["today_date"] = self._internal_data["tomorrow_date"]
+            self._internal_data["tomorrow"] = None
+            self._internal_data["tomorrow_date"] = None
             data_updated = True
 
         if (
@@ -130,47 +139,63 @@ class PGEDataCoordinator(DataUpdateCoordinator):
             "tomorrow": self._internal_data["tomorrow"],
         }
 
-    async def _load_cache(self):
+    async def _load_cache(self) -> None:
+        """Load data from the cache."""
         try:
             cached = await self.store.async_load()
             if cached:
                 _LOGGER.debug("Wczytano ceny z pamięci trwałej")
                 self._internal_data = {
-                    "today": {int(k): v for k, v in cached.get("today", {}).items()}
-                    if cached.get("today")
-                    else None,
-                    "today_date": date.fromisoformat(cached["today_date"])
-                    if cached.get("today_date")
-                    else None,
-                    "tomorrow": {
-                        int(k): v for k, v in cached.get("tomorrow", {}).items()
-                    }
-                    if cached.get("tomorrow")
-                    else None,
-                    "tomorrow_date": date.fromisoformat(cached["tomorrow_date"])
-                    if cached.get("tomorrow_date")
-                    else None,
+                    "today": (
+                        {int(k): v for k, v in cached.get("today", {}).items()}
+                        if cached.get("today")
+                        else None
+                    ),
+                    "today_date": (
+                        date.fromisoformat(cached["today_date"])
+                        if cached.get("today_date")
+                        else None
+                    ),
+                    "tomorrow": (
+                        {int(k): v for k, v in cached.get("tomorrow", {}).items()}
+                        if cached.get("tomorrow")
+                        else None
+                    ),
+                    "tomorrow_date": (
+                        date.fromisoformat(cached["tomorrow_date"])
+                        if cached.get("tomorrow_date")
+                        else None
+                    ),
                 }
+                if last_update := cached.get("last_update_time"):
+                    self.last_update_time = dt_util.parse_datetime(last_update)
+                self.api_connected = cached.get("api_connected", True)
         except Exception as e:
             _LOGGER.error("Błąd podczas wczytywania cache: %s", e)
 
-    async def _save_cache(self):
+    async def _save_cache(self) -> None:
+        """Save data to the cache."""
         try:
+            today_date: date | None = self._internal_data["today_date"]
+            tomorrow_date: date | None = self._internal_data["tomorrow_date"]
             data_to_save = {
                 "today": self._internal_data["today"],
-                "today_date": self._internal_data["today_date"].isoformat()
-                if self._internal_data["today_date"]
-                else None,
+                "today_date": today_date.isoformat() if today_date else None,
                 "tomorrow": self._internal_data["tomorrow"],
-                "tomorrow_date": self._internal_data["tomorrow_date"].isoformat()
-                if self._internal_data["tomorrow_date"]
-                else None,
+                "tomorrow_date": tomorrow_date.isoformat() if tomorrow_date else None,
+                "last_update_time": (
+                    self.last_update_time.isoformat() if self.last_update_time else None
+                ),
+                "api_connected": self.api_connected,
             }
             await self.store.async_save(data_to_save)
         except Exception as e:
             _LOGGER.error("Błąd podczas zapisywania cache: %s", e)
 
-    def _parse_prices(self, raw_data: dict[str, Any] | None) -> dict[int, float] | None:
+    def _parse_prices(
+        self, raw_data: list[dict[str, Any]] | None
+    ) -> dict[int, float] | None:
+        """Parse raw price data from the API."""
         if not raw_data or not isinstance(raw_data, list):
             return None
 

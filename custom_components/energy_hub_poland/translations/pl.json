@@ -2,15 +2,15 @@
   "config": {
     "step": {
       "user": {
-        "title": "Wybierz Tryb Pracy Energy Hub Poland",
-        "description": "Wybierz, jak ma działać integracja:\n- **Taryfa Dynamiczna:** Monitorowanie cen rynkowych (RCE).\n- **Wirtualna Taryfa G12/G12w:** Symulacja kosztów dla taryf stałych.\n- **Tryb Porównawczy:** Porównywanie wszystkich taryf w czasie rzeczywistym.",
+        "title": "Wybierz tryb pracy - Energy Hub",
+        "description": "Wybierz sposób działania integracji:\n- **Taryfa Dynamiczna:** Monitorowanie cen rynkowych (RCE).\n- **Wirtualna Taryfa G12/G12w:** Symulacja kosztów dla taryf stałych.\n- **Tryb Porównawczy:** Porównanie wszystkich taryf w czasie rzeczywistym.",
         "data": {
           "operation_mode": "Tryb pracy"
         }
       },
       "g12_config": {
-        "title": "Konfiguracja Taryfy G12",
-        "description": "Wprowadź swoje stawki (netto) dla taryfy G12 oraz godziny obowiązywania strefy szczytowej.",
+        "title": "Konfiguracja taryfy G12",
+        "description": "Wprowadź stawki netto G12 i zakresy godzin szczytowych.",
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
@@ -18,8 +18,8 @@
         }
       },
       "g12w_config": {
-        "title": "Konfiguracja Taryfy G12w",
-        "description": "Wprowadź stawki (netto) dla G12w i godziny szczytu w dni robocze. Weekendy i święta są automatycznie strefą pozaszczytową.",
+        "title": "Konfiguracja taryfy G12w",
+        "description": "Wprowadź stawki netto G12w i godziny szczytowe w dni robocze. Weekendy i święta są automatycznie ustawiane jako poza szczytem.",
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
@@ -27,18 +27,19 @@
         }
       },
       "energy_sensor": {
-        "title": "Konfiguracja Sensora Zużycia Energii",
-        "description": "Wybierz sensor zużycia energii, aby włączyć obliczanie kosztów i oszczędności. Ten krok jest opcjonalny.",
+        "title": "Konfiguracja sensora zużycia energii",
+        "description": "Wybierz sensor zużycia energii, aby umożliwić obliczenia kosztów i oszczędności. Ten krok jest opcjonalny.",
         "data": {
-          "energy_sensor": "Sensor zużycia energii (Opcjonalny)",
-          "sensor_type": "Typ sensora zużycia energii"
+          "energy_sensor": "Sensor zużycia energii (opcjonalnie)",
+          "sensor_type": "Typ sensora zużycia"
         }
       }
     },
     "error": {
       "invalid_hour_range": "Nieprawidłowy format godzin. Użyj formatu '6-13,15-22'.",
       "invalid_g12_hour_range": "Nieprawidłowy format godzin dla G12.",
-      "invalid_g12w_hour_range": "Nieprawidłowy format godzin dla G12w."
+      "invalid_g12w_hour_range": "Nieprawidłowy format godzin dla G12w.",
+      "invalid_entity_id": "Nieprawidłowy format ID encji. Powinien być sensor.nazwa"
     },
     "abort": {
       "already_configured": "Urządzenie jest już skonfigurowane."
@@ -47,8 +48,8 @@
   "options": {
     "step": {
       "reconfigure": {
-        "title": "Zmień Ustawienia Energy Hub Poland",
-        "description": "Zaktualizuj ustawienia swoich taryf lub zmień sensor zużycia energii.",
+        "title": "Zmień ustawienia Energy Hub",
+        "description": "Zaktualizuj ustawienia taryfy lub zmień sensor zużycia energii.",
         "data": {
           "energy_sensor": "Sensor zużycia energii",
           "sensor_type": "Typ sensora zużycia",
@@ -73,9 +74,44 @@
     },
     "sensor_type": {
       "options": {
-        "total_increasing": "Stale rosnący (np. licznik główny)",
-        "daily": "Zerowany codziennie (np. z falownika)"
+        "total_increasing": "Przyrostowo (np. licznik główny)",
+        "daily": "Resetowany codziennie (np. z falownika)"
       }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "recommendation": {
+        "name": "Rekomendacja",
+        "state": {
+          "DYNAMICZNA": "Taryfa dynamiczna",
+          "G12": "Taryfa G12",
+          "G12W": "Taryfa G12w",
+          "Brak danych": "Brak danych"
+        }
+      },
+      "current_price_dynamic": { "name": "Aktualna cena DYNAMICZNA" },
+      "current_price_g12": { "name": "Aktualna cena G12" },
+      "current_price_g12w": { "name": "Aktualna cena G12w" },
+      "min_price_today": { "name": "Minimalna cena dziś" },
+      "max_price_today": { "name": "Maksymalna cena dziś" },
+      "min_price_tomorrow": { "name": "Minimalna cena jutro" },
+      "max_price_tomorrow": { "name": "Maksymalna cena jutro" },
+      "cost_dynamic_daily": { "name": "Koszt DYNAMICZNY dziś" },
+      "cost_dynamic_monthly": { "name": "Koszt DYNAMICZNY miesiąc" },
+      "cost_g12_daily": { "name": "Koszt G12 dziś" },
+      "cost_g12_monthly": { "name": "Koszt G12 miesiąc" },
+      "cost_g12w_daily": { "name": "Koszt G12w dziś" },
+      "cost_g12w_monthly": { "name": "Koszt G12w miesiąc" },
+      "savings_dynamic_vs_g12_daily": { "name": "Bilans DYNAMICZNA vs G12 dziś" },
+      "savings_dynamic_vs_g12_monthly": { "name": "Bilans DYNAMICZNA vs G12 miesiąc" },
+      "savings_dynamic_vs_g12w_daily": { "name": "Bilans DYNAMICZNA vs G12w dziś" },
+      "savings_dynamic_vs_g12w_monthly": { "name": "Bilans DYNAMICZNA vs G12w miesiąc" },
+      "savings_g12_vs_g12w_daily": { "name": "Bilans G12 vs G12w dziś" },
+      "savings_g12_vs_g12w_monthly": { "name": "Bilans G12 vs G12w miesiąc" }
+    },
+    "binary_sensor": {
+      "api_status": { "name": "Status połączenia API" }
     }
   }
 }

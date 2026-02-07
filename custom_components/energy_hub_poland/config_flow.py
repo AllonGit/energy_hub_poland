@@ -1,4 +1,5 @@
 # custom_components/energy_hub_poland/config_flow.py
+import logging
 import re
 from typing import Any
 
@@ -33,23 +34,37 @@ from .const import (
     SENSOR_TYPE_TOTAL_INCREASING,
 )
 
+_LOGGER = logging.getLogger(__package__)
+
 
 def validate_hour_format(user_input: str) -> bool:
+    """Validate hour format."""
     if not user_input:
         return True
     pattern = re.compile(r"^\d{1,2}-\d{1,2}(,\d{1,2}-\d{1,2})*$")
     return pattern.match(user_input) is not None
 
 
-class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_poland"):
+def validate_entity_id(entity_id: str) -> bool:
+    """Validate entity ID format."""
+    if not entity_id:
+        return True
+    return re.match(r"^sensor\..+$", entity_id) is not None
+
+
+class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_poland"):  # type: ignore[call-arg]
+    """Handle a config flow for Energy Hub Poland."""
+
     VERSION = 1
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize the config flow."""
         self.config_data: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle the initial step."""
         if user_input is not None:
             self.config_data.update(user_input)
             mode = user_input[CONF_OPERATION_MODE]
@@ -62,7 +77,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 return await self.async_step_g12_config()
 
             return self.async_create_entry(
-                title="Energy Hub Poland Dynamic", data=self.config_data
+                title="Energy Hub Dynamic", data=self.config_data
             )
 
         return self.async_show_form(
@@ -90,6 +105,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
     async def async_step_g12_config(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle G12 tariff configuration."""
         errors: dict[str, str] = {}
         if user_input is not None:
             if not validate_hour_format(user_input[CONF_HOURS_PEAK]):
@@ -101,7 +117,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                     return await self.async_step_g12w_config()
 
                 return self.async_create_entry(
-                    title="Energy Hub Poland G12", data=self.config_data
+                    title="Energy Hub G12", data=self.config_data
                 )
 
         return self.async_show_form(
@@ -119,6 +135,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
     async def async_step_g12w_config(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle G12w tariff configuration."""
         errors: dict[str, str] = {}
         if user_input is not None:
             if not validate_hour_format(user_input[CONF_HOURS_PEAK]):
@@ -129,7 +146,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                     return await self.async_step_energy_sensor()
 
                 return self.async_create_entry(
-                    title="Energy Hub Poland G12w", data=self.config_data
+                    title="Energy Hub G12w", data=self.config_data
                 )
 
         return self.async_show_form(
@@ -147,20 +164,27 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
     async def async_step_energy_sensor(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle energy sensor configuration."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self.config_data.update(user_input)
+            if user_input.get(CONF_ENERGY_SENSOR) and not validate_entity_id(
+                user_input[CONF_ENERGY_SENSOR]
+            ):
+                errors["base"] = "invalid_entity_id"
+            else:
+                self.config_data.update(user_input)
 
-            title_map = {
-                MODE_DYNAMIC: "Energy Hub Poland Dynamic",
-                MODE_G12: "Energy Hub Poland G12",
-                MODE_G12W: "Energy Hub Poland G12w",
-                MODE_COMPARISON: "Energy Hub Poland Comparison",
-            }
-            title = title_map.get(
-                self.config_data[CONF_OPERATION_MODE], "Energy Hub Poland"
-            )
+                title_map = {
+                    MODE_DYNAMIC: "Energy Hub Dynamic",
+                    MODE_G12: "Energy Hub G12",
+                    MODE_G12W: "Energy Hub G12w",
+                    MODE_COMPARISON: "Energy Hub Comparison",
+                }
+                title = title_map.get(
+                    self.config_data[CONF_OPERATION_MODE], "Energy Hub"
+                )
 
-            return self.async_create_entry(title=title, data=self.config_data)
+                return self.async_create_entry(title=title, data=self.config_data)
 
         return self.async_show_form(
             step_id="energy_sensor",
@@ -180,6 +204,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                     ),
                 }
             ),
+            errors=errors,
         )
 
     @staticmethod
@@ -191,149 +216,162 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
 
 
 class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
-    def __init__(self, config_entry: config_entries.ConfigEntry):
-        self.config_entry = config_entry
-        self.options = dict(config_entry.options)
+    """Handle options flow for Energy Hub Poland."""
 
-    async def async_step_init(self, user_input=None):
-        if self.config_entry.data.get(CONF_OPERATION_MODE) == MODE_DYNAMIC:
-            return self.async_create_entry(title="", data={})
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
 
-        return await self.async_step_reconfigure()
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Initialize the options flow."""
+        try:
+            config = {**self._config_entry.data, **self._config_entry.options}
+            mode = config.get(CONF_OPERATION_MODE)
+            if mode == MODE_DYNAMIC:
+                return self.async_create_entry(title="", data={})
+
+            return await self.async_step_reconfigure()
+        except Exception as err:
+            _LOGGER.error("Options flow init error: %s", err)
+            return self.async_abort(reason="unknown")
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Handle reconfiguration."""
         errors: dict[str, str] = {}
+        try:
+            config = {**self._config_entry.data, **self._config_entry.options}
+            mode = config.get(CONF_OPERATION_MODE)
 
-        if user_input is not None:
-            if self.config_entry.data.get(CONF_OPERATION_MODE) in [
-                MODE_G12,
-                MODE_COMPARISON,
-            ]:
-                if not validate_hour_format(
-                    user_input[f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}"]
-                ):
-                    errors["base"] = "invalid_g12_hour_range"
+            if user_input is not None:
+                if mode in [MODE_G12, MODE_COMPARISON]:
+                    val = user_input.get(f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}")
+                    if not validate_hour_format(str(val) if val is not None else ""):
+                        errors["base"] = "invalid_g12_hour_range"
 
-            if self.config_entry.data.get(CONF_OPERATION_MODE) in [
-                MODE_G12W,
-                MODE_COMPARISON,
-            ]:
-                if not validate_hour_format(
-                    user_input[f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}"]
-                ):
-                    errors["base"] = "invalid_g12w_hour_range"
+                if mode in [MODE_G12W, MODE_COMPARISON]:
+                    val = user_input.get(f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}")
+                    if not validate_hour_format(str(val) if val is not None else ""):
+                        errors["base"] = "invalid_g12w_hour_range"
 
-            if not errors:
-                g12_settings = {}
-                g12w_settings = {}
+                if mode == MODE_COMPARISON:
+                    if user_input.get(CONF_ENERGY_SENSOR) and not validate_entity_id(
+                        user_input[CONF_ENERGY_SENSOR]
+                    ):
+                        errors["base"] = "invalid_entity_id"
 
-                if self.config_entry.data.get(CONF_OPERATION_MODE) in [
-                    MODE_G12,
-                    MODE_COMPARISON,
-                ]:
-                    g12_settings = {
-                        CONF_PRICE_PEAK: user_input.pop(
-                            f"{CONF_G12_SETTINGS}_{CONF_PRICE_PEAK}"
-                        ),
-                        CONF_PRICE_OFFPEAK: user_input.pop(
-                            f"{CONF_G12_SETTINGS}_{CONF_PRICE_OFFPEAK}"
-                        ),
-                        CONF_HOURS_PEAK: user_input.pop(
-                            f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}"
+                if not errors:
+                    try:
+                        new_options = {**user_input}
+                        if mode in [MODE_G12, MODE_COMPARISON]:
+                            new_options[CONF_G12_SETTINGS] = {
+                                CONF_PRICE_PEAK: new_options.pop(
+                                    f"{CONF_G12_SETTINGS}_{CONF_PRICE_PEAK}", 0.80
+                                ),
+                                CONF_PRICE_OFFPEAK: new_options.pop(
+                                    f"{CONF_G12_SETTINGS}_{CONF_PRICE_OFFPEAK}", 0.50
+                                ),
+                                CONF_HOURS_PEAK: new_options.pop(
+                                    f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}",
+                                    DEFAULT_G12_PEAK_HOURS,
+                                ),
+                            }
+
+                        if mode in [MODE_G12W, MODE_COMPARISON]:
+                            new_options[CONF_G12W_SETTINGS] = {
+                                CONF_PRICE_PEAK: new_options.pop(
+                                    f"{CONF_G12W_SETTINGS}_{CONF_PRICE_PEAK}", 0.85
+                                ),
+                                CONF_PRICE_OFFPEAK: new_options.pop(
+                                    f"{CONF_G12W_SETTINGS}_{CONF_PRICE_OFFPEAK}", 0.55
+                                ),
+                                CONF_HOURS_PEAK: new_options.pop(
+                                    f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}",
+                                    DEFAULT_G12W_PEAK_HOURS,
+                                ),
+                            }
+
+                        return self.async_create_entry(title="", data=new_options)
+                    except Exception as err:
+                        _LOGGER.error("Options flow process error: %s", err)
+                        errors["base"] = "unknown"
+
+            g12_settings = config.get(CONF_G12_SETTINGS) or {}
+            g12w_settings = config.get(CONF_G12W_SETTINGS) or {}
+
+            schema = {}
+
+            if mode == MODE_COMPARISON:
+                schema.update(
+                    {
+                        vol.Optional(
+                            CONF_ENERGY_SENSOR,
+                            default=config.get(CONF_ENERGY_SENSOR),
+                        ): EntitySelector(EntitySelectorConfig(domain="sensor")),
+                        vol.Required(
+                            CONF_SENSOR_TYPE,
+                            default=config.get(
+                                CONF_SENSOR_TYPE, SENSOR_TYPE_TOTAL_INCREASING
+                            ),
+                        ): SelectSelector(
+                            SelectSelectorConfig(
+                                options=[
+                                    SENSOR_TYPE_TOTAL_INCREASING,
+                                    SENSOR_TYPE_DAILY,
+                                ],
+                                mode=SelectSelectorMode.DROPDOWN,
+                                translation_key="sensor_type",
+                            )
                         ),
                     }
+                )
 
-                if self.config_entry.data.get(CONF_OPERATION_MODE) in [
-                    MODE_G12W,
-                    MODE_COMPARISON,
-                ]:
-                    g12w_settings = {
-                        CONF_PRICE_PEAK: user_input.pop(
-                            f"{CONF_G12W_SETTINGS}_{CONF_PRICE_PEAK}"
-                        ),
-                        CONF_PRICE_OFFPEAK: user_input.pop(
-                            f"{CONF_G12W_SETTINGS}_{CONF_PRICE_OFFPEAK}"
-                        ),
-                        CONF_HOURS_PEAK: user_input.pop(
-                            f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}"
-                        ),
+            if mode in [MODE_G12, MODE_COMPARISON]:
+                schema.update(
+                    {
+                        vol.Required(
+                            f"{CONF_G12_SETTINGS}_{CONF_PRICE_PEAK}",
+                            default=g12_settings.get(CONF_PRICE_PEAK, 0.80),
+                        ): vol.Coerce(float),
+                        vol.Required(
+                            f"{CONF_G12_SETTINGS}_{CONF_PRICE_OFFPEAK}",
+                            default=g12_settings.get(CONF_PRICE_OFFPEAK, 0.50),
+                        ): vol.Coerce(float),
+                        vol.Required(
+                            f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}",
+                            default=g12_settings.get(
+                                CONF_HOURS_PEAK, DEFAULT_G12_PEAK_HOURS
+                            ),
+                        ): str,
                     }
+                )
 
-                updated_data = {**user_input}
-                if g12_settings:
-                    updated_data[CONF_G12_SETTINGS] = g12_settings
-                if g12w_settings:
-                    updated_data[CONF_G12W_SETTINGS] = g12w_settings
+            if mode in [MODE_G12W, MODE_COMPARISON]:
+                schema.update(
+                    {
+                        vol.Required(
+                            f"{CONF_G12W_SETTINGS}_{CONF_PRICE_PEAK}",
+                            default=g12w_settings.get(CONF_PRICE_PEAK, 0.85),
+                        ): vol.Coerce(float),
+                        vol.Required(
+                            f"{CONF_G12W_SETTINGS}_{CONF_PRICE_OFFPEAK}",
+                            default=g12w_settings.get(CONF_PRICE_OFFPEAK, 0.55),
+                        ): vol.Coerce(float),
+                        vol.Required(
+                            f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}",
+                            default=g12w_settings.get(
+                                CONF_HOURS_PEAK, DEFAULT_G12W_PEAK_HOURS
+                            ),
+                        ): str,
+                    }
+                )
 
-                return self.async_create_entry(title="", data=updated_data)
-
-        current_config = {**self.config_entry.data, **self.config_entry.options}
-        g12_settings = current_config.get(CONF_G12_SETTINGS, {})
-        g12w_settings = current_config.get(CONF_G12W_SETTINGS, {})
-
-        schema = {}
-
-        if current_config.get(CONF_OPERATION_MODE) == MODE_COMPARISON:
-            schema.update(
-                {
-                    vol.Optional(
-                        CONF_ENERGY_SENSOR,
-                        default=current_config.get(CONF_ENERGY_SENSOR),
-                    ): EntitySelector(EntitySelectorConfig(domain="sensor")),
-                    vol.Required(
-                        CONF_SENSOR_TYPE, default=current_config.get(CONF_SENSOR_TYPE)
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[SENSOR_TYPE_TOTAL_INCREASING, SENSOR_TYPE_DAILY],
-                            mode=SelectSelectorMode.DROPDOWN,
-                            translation_key="sensor_type",
-                        )
-                    ),
-                }
+            return self.async_show_form(
+                step_id="reconfigure", data_schema=vol.Schema(schema), errors=errors
             )
-
-        if current_config.get(CONF_OPERATION_MODE) in [MODE_G12, MODE_COMPARISON]:
-            schema.update(
-                {
-                    vol.Required(
-                        f"{CONF_G12_SETTINGS}_{CONF_PRICE_PEAK}",
-                        default=g12_settings.get(CONF_PRICE_PEAK, 0.80),
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        f"{CONF_G12_SETTINGS}_{CONF_PRICE_OFFPEAK}",
-                        default=g12_settings.get(CONF_PRICE_OFFPEAK, 0.50),
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}",
-                        default=g12_settings.get(
-                            CONF_HOURS_PEAK, DEFAULT_G12_PEAK_HOURS
-                        ),
-                    ): str,
-                }
-            )
-
-        if current_config.get(CONF_OPERATION_MODE) in [MODE_G12W, MODE_COMPARISON]:
-            schema.update(
-                {
-                    vol.Required(
-                        f"{CONF_G12W_SETTINGS}_{CONF_PRICE_PEAK}",
-                        default=g12w_settings.get(CONF_PRICE_PEAK, 0.85),
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        f"{CONF_G12W_SETTINGS}_{CONF_PRICE_OFFPEAK}",
-                        default=g12w_settings.get(CONF_PRICE_OFFPEAK, 0.55),
-                    ): vol.Coerce(float),
-                    vol.Required(
-                        f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}",
-                        default=g12w_settings.get(
-                            CONF_HOURS_PEAK, DEFAULT_G12W_PEAK_HOURS
-                        ),
-                    ): str,
-                }
-            )
-
-        return self.async_show_form(
-            step_id="reconfigure", data_schema=vol.Schema(schema), errors=errors
-        )
+        except Exception as err:
+            _LOGGER.error("Options flow reconfigure error: %s", err)
+            return self.async_abort(reason="unknown")
