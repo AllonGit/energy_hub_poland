@@ -12,7 +12,7 @@
 **For the English version click [here](README_EN.md)**
 
 <p align="center">
-  <img src="brands/logo@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---

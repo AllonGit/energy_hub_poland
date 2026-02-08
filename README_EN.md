@@ -9,7 +9,7 @@
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 
 <p align="center">
-  <img src="brands/logo@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---
