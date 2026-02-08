@@ -82,6 +82,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 registry.async_update_entity(entity.entity_id, new_unique_id=new_uid)
 
     coordinator = EnergyHubDataCoordinator(hass)
+    # Load cache immediately to avoid setup timeouts and provide data to sensors fast
+    await coordinator._load_cache()
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
