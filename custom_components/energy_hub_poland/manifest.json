@@ -5,10 +5,10 @@
     "@AllonGit"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/AllonGit/energy_hub_poland_private",
+  "documentation": "https://github.com/AllonGit/energy_hub_poland",
   "integration_type": "service",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/AllonGit/energy_hub_poland_private/issues",
+  "issue_tracker": "https://github.com/AllonGit/energy_hub_poland/issues",
   "requirements": [
     "aiohttp>=3.8.1",
     "async_timeout>=4.0.0",
