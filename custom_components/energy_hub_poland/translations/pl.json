@@ -10,20 +10,29 @@
       },
       "g12_config": {
         "title": "Konfiguracja taryfy G12",
-        "description": "Wprowadź stawki netto G12 i zakresy godzin szczytowych.",
+        "description": "Wprowadź stawki brutto G12 i zakresy godzin szczytowych dla Lata i Zimy.",
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
-          "hours_peak": "Godziny szczytu (np. 6-13,15-22)"
+          "hours_peak_summer": "Godziny szczytu - Lato (Kwi-Wrz)",
+          "hours_peak_winter": "Godziny szczytu - Zima (Paź-Mar)"
+        }
+      },
+      "dynamic_config": {
+        "title": "Konfiguracja taryfy dynamicznej",
+        "description": "Wybierz w jakiej jednostce chcesz widzieć ceny. Możesz to później zmienić w opcjach.",
+        "data": {
+          "unit_type": "Jednostka ceny"
         }
       },
       "g12w_config": {
         "title": "Konfiguracja taryfy G12w",
-        "description": "Wprowadź stawki netto G12w i godziny szczytowe w dni robocze. Weekendy i święta są automatycznie ustawiane jako poza szczytem.",
+        "description": "Wprowadź stawki brutto G12w i godziny szczytowe w dni robocze. Weekendy i święta są automatycznie ustawiane jako poza szczytem.",
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
-          "hours_peak": "Godziny szczytu (np. 6-13,15-22)"
+          "hours_peak_summer": "Godziny szczytu - Lato (Kwi-Wrz)",
+          "hours_peak_winter": "Godziny szczytu - Zima (Paź-Mar)"
         }
       },
       "energy_sensor": {
@@ -51,14 +60,17 @@
         "title": "Zmień ustawienia Energy Hub",
         "description": "Zaktualizuj ustawienia taryfy lub zmień sensor zużycia energii.",
         "data": {
+          "unit_type": "Jednostka ceny (tryb Dynamiczny)",
           "energy_sensor": "Sensor zużycia energii",
           "sensor_type": "Typ sensora zużycia",
           "g12_settings_price_peak": "G12 - Cena w szczycie (PLN/kWh)",
           "g12_settings_price_offpeak": "G12 - Cena poza szczytem (PLN/kWh)",
-          "g12_settings_hours_peak": "G12 - Godziny szczytu",
+          "g12_settings_hours_peak_summer": "G12 - Godziny szczytu Lato",
+          "g12_settings_hours_peak_winter": "G12 - Godziny szczytu Zima",
           "g12w_settings_price_peak": "G12w - Cena w szczycie (PLN/kWh)",
           "g12w_settings_price_offpeak": "G12w - Cena poza szczytem (PLN/kWh)",
-          "g12w_settings_hours_peak": "G12w - Godziny szczytu"
+          "g12w_settings_hours_peak_summer": "G12w - Godziny szczytu Lato",
+          "g12w_settings_hours_peak_winter": "G12w - Godziny szczytu Zima"
         }
       }
     }
@@ -77,6 +89,12 @@
         "total_increasing": "Przyrostowo (np. licznik główny)",
         "daily": "Resetowany codziennie (np. z falownika)"
       }
+    },
+    "unit_type": {
+      "options": {
+        "kwh": "Cena za 1 kWh",
+        "mwh": "Cena za 1 MWh"
+      }
     }
   },
   "entity": {
@@ -93,10 +111,35 @@
       "current_price_dynamic": { "name": "Aktualna cena DYNAMICZNA" },
       "current_price_g12": { "name": "Aktualna cena G12" },
       "current_price_g12w": { "name": "Aktualna cena G12w" },
+      "current_tariff": {
+        "name": "Aktualna taryfa",
+        "state": {
+          "szczyt": "Szczyt",
+          "poza_szczytem": "Poza szczytem"
+        }
+      },
+      "current_tariff_g12": {
+        "name": "Aktualna taryfa G12",
+        "state": {
+          "szczyt": "Szczyt",
+          "poza_szczytem": "Poza szczytem"
+        }
+      },
+      "current_tariff_g12w": {
+        "name": "Aktualna taryfa G12w",
+        "state": {
+          "szczyt": "Szczyt",
+          "poza_szczytem": "Poza szczytem"
+        }
+      },
       "min_price_today": { "name": "Minimalna cena dziś" },
       "max_price_today": { "name": "Maksymalna cena dziś" },
       "min_price_tomorrow": { "name": "Minimalna cena jutro" },
       "max_price_tomorrow": { "name": "Maksymalna cena jutro" },
+      "average_price_today": { "name": "Średnia cena dziś" },
+      "average_price_tomorrow": { "name": "Średnia cena jutro" },
+      "cheapest_hour_today": { "name": "Najtańsza godzina dziś" },
+      "cheapest_hour_tomorrow": { "name": "Najtańsza godzina jutro" },
       "cost_dynamic_daily": { "name": "Koszt DYNAMICZNY dziś" },
       "cost_dynamic_monthly": { "name": "Koszt DYNAMICZNY miesiąc" },
       "cost_g12_daily": { "name": "Koszt G12 dziś" },
@@ -111,7 +154,8 @@
       "savings_g12_vs_g12w_monthly": { "name": "Bilans G12 vs G12w miesiąc" }
     },
     "binary_sensor": {
-      "api_status": { "name": "Status połączenia API" }
+      "api_status": { "name": "Status połączenia API" },
+      "price_spike": { "name": "Skok ceny" }
     }
   }
 }

@@ -3,6 +3,7 @@ import logging
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import Store
@@ -21,7 +22,7 @@ STORAGE_VERSION = 1
 class EnergyHubDataCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Energy Hub data."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
         super().__init__(
             hass,
@@ -29,6 +30,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             name=DOMAIN,
             update_interval=timedelta(minutes=5),
         )
+        self.config_entry = entry
         self.api_client = EnergyHubApiClient(async_get_clientsession(hass))
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._cache_loaded = False
@@ -44,12 +46,9 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
     async def _fetch_data(self, fetch_date: date) -> dict[int, float] | None:
         """Fetch data from the API."""
-        api_query_date = fetch_date - timedelta(days=1)
-        _LOGGER.debug(
-            "Fetching prices for %s (API query date: %s)", fetch_date, api_query_date
-        )
+        _LOGGER.debug("Fetching prices for %s", fetch_date)
 
-        raw_data = await self.api_client.async_get_prices(api_query_date)
+        raw_data = await self.api_client.async_get_prices(fetch_date)
         parsed_prices = self._parse_prices(raw_data)
 
         if parsed_prices:
@@ -194,14 +193,16 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         try:
             for item in raw_data:
                 dt = datetime.strptime(item["date_time"], "%Y-%m-%d %H:%M:%S")
+                # Treat the API time as local Polish time
+                dt = dt.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+
                 price_val = 0.0
                 for attr in item.get("attributes", []):
                     if attr["name"] == "price":
                         price_val = float(attr["value"])
                         break
-                # PGE uses intervals like 0-1, 1-2. If 0-1 is labeled 01:00:00,
-                # we subtract 1 minute to map it to hour 0 correctly.
-                hour = (dt - timedelta(minutes=1)).hour
+                # Records represent the start of the interval (e.g. 11:00:00 is for 11:00-12:00)
+                hour = dt.hour
                 prices[hour] = round(price_val / 1000, 4)
         except (ValueError, KeyError, TypeError) as e:
             _LOGGER.warning(

@@ -10,20 +10,29 @@
       },
       "g12_config": {
         "title": "G12 Tariff Configuration",
-        "description": "Enter your G12 net rates and peak hour ranges.",
+        "description": "Enter your G12 gross rates and peak hour ranges for Summer and Winter.",
         "data": {
           "price_peak": "Peak price (PLN/kWh)",
           "price_offpeak": "Off-peak price (PLN/kWh)",
-          "hours_peak": "Peak hours (e.g., 6-13,15-22)"
+          "hours_peak_summer": "Summer peak hours (Apr-Sep)",
+          "hours_peak_winter": "Winter peak hours (Oct-Mar)"
+        }
+      },
+      "dynamic_config": {
+        "title": "Dynamic Tariff Configuration",
+        "description": "Select the unit in which you want to see prices. You can change this later in options.",
+        "data": {
+          "unit_type": "Price unit"
         }
       },
       "g12w_config": {
         "title": "G12w Tariff Configuration",
-        "description": "Enter G12w net rates and weekday peak hours. Weekends and holidays are automatically set as off-peak.",
+        "description": "Enter G12w gross rates and weekday peak hours. Weekends and holidays are automatically set as off-peak.",
         "data": {
           "price_peak": "Peak price (PLN/kWh)",
           "price_offpeak": "Off-peak price (PLN/kWh)",
-          "hours_peak": "Peak hours (e.g., 6-13,15-22)"
+          "hours_peak_summer": "Summer peak hours (Apr-Sep)",
+          "hours_peak_winter": "Winter peak hours (Oct-Mar)"
         }
       },
       "energy_sensor": {
@@ -51,14 +60,17 @@
         "title": "Change Energy Hub Settings",
         "description": "Update your tariff settings or change the energy consumption sensor.",
         "data": {
+          "unit_type": "Price unit (Dynamic mode)",
           "energy_sensor": "Energy consumption sensor",
           "sensor_type": "Consumption sensor type",
           "g12_settings_price_peak": "G12 - Peak price (PLN/kWh)",
           "g12_settings_price_offpeak": "G12 - Off-peak price (PLN/kWh)",
-          "g12_settings_hours_peak": "G12 - Peak hours",
+          "g12_settings_hours_peak_summer": "G12 - Summer peak hours",
+          "g12_settings_hours_peak_winter": "G12 - Winter peak hours",
           "g12w_settings_price_peak": "G12w - Peak price (PLN/kWh)",
           "g12w_settings_price_offpeak": "G12w - Off-peak price (PLN/kWh)",
-          "g12w_settings_hours_peak": "G12w - Peak hours"
+          "g12w_settings_hours_peak_summer": "G12w - Summer peak hours",
+          "g12w_settings_hours_peak_winter": "G12w - Winter peak hours"
         }
       }
     }
@@ -77,6 +89,12 @@
         "total_increasing": "Total increasing (e.g., main meter)",
         "daily": "Resets daily (e.g., from inverter)"
       }
+    },
+    "unit_type": {
+      "options": {
+        "kwh": "Price per 1 kWh",
+        "mwh": "Price per 1 MWh"
+      }
     }
   },
   "entity": {
@@ -93,10 +111,35 @@
       "current_price_dynamic": { "name": "Current price DYNAMIC" },
       "current_price_g12": { "name": "Current price G12" },
       "current_price_g12w": { "name": "Current price G12w" },
+      "current_tariff": {
+        "name": "Current Tariff",
+        "state": {
+          "szczyt": "Peak",
+          "poza_szczytem": "Off-peak"
+        }
+      },
+      "current_tariff_g12": {
+        "name": "Current Tariff G12",
+        "state": {
+          "szczyt": "Peak",
+          "poza_szczytem": "Off-peak"
+        }
+      },
+      "current_tariff_g12w": {
+        "name": "Current Tariff G12w",
+        "state": {
+          "szczyt": "Peak",
+          "poza_szczytem": "Off-peak"
+        }
+      },
       "min_price_today": { "name": "Minimum price today" },
       "max_price_today": { "name": "Maximum price today" },
       "min_price_tomorrow": { "name": "Minimum price tomorrow" },
       "max_price_tomorrow": { "name": "Maximum price tomorrow" },
+      "average_price_today": { "name": "Average price today" },
+      "average_price_tomorrow": { "name": "Average price tomorrow" },
+      "cheapest_hour_today": { "name": "Cheapest hour today" },
+      "cheapest_hour_tomorrow": { "name": "Cheapest hour tomorrow" },
       "cost_dynamic_daily": { "name": "Cost DYNAMIC daily" },
       "cost_dynamic_monthly": { "name": "Cost DYNAMIC monthly" },
       "cost_g12_daily": { "name": "Cost G12 daily" },
@@ -111,7 +154,8 @@
       "savings_g12_vs_g12w_monthly": { "name": "Savings G12 vs G12w monthly" }
     },
     "binary_sensor": {
-      "api_status": { "name": "API connection status" }
+      "api_status": { "name": "API connection status" },
+      "price_spike": { "name": "Price spike" }
     }
   }
 }

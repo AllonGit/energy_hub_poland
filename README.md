@@ -7,7 +7,7 @@
 ![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
 ![GitHub stars](https://img.shields.io/github/stars/AllonGit/energy_hub_poland?style=social)
 
-[![Otwórz repozytorium w HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 
 **For the English version click [here](README_EN.md)**
 
@@ -53,11 +53,9 @@ Najpotężniejsza funkcja integracji.
 ### Krok 1: Instalacja przez HACS
 
 1. Otwórz **HACS** w Home Assistant.
-2. Kliknij w menu (trzy kropki) w prawym górnym rogu i wybierz **Niestandardowe repozytoria**.
-3. Wklej adres URL: `https://github.com/AllonGit/energy_hub_poland`.
-4. Wybierz typ: **Integration**.
-5. Kliknij **Pobierz**.
-6. **Zrestartuj Home Assistant**.
+2. Wyszukaj `Energy Hub Poland`
+3. Kliknij **Pobierz**.
+4. **Zrestartuj Home Assistant**.
 
 ### Krok 2: Konfiguracja
 
@@ -68,6 +66,16 @@ Najpotężniejsza funkcja integracji.
    * Wybierz domyślny tryb pracy.
    * Wprowadź swój licznik energii (wymagany do obliczania kosztów).
    * Zdefiniuj godziny szczytu (jeśli używasz G12).
+
+---
+
+## 🚀 Nowe Sensory i Automatyzacje
+
+W wersji v1.2.1 wprowadziliśmy sensory ułatwiające automatyzację domu:
+
+* **Średnia cena dobowa**: Porównuj aktualną cenę z przeciętną ceną dnia (`dziś` i `jutro`).
+* **Godzina najniższej ceny**: Zaplanuj zmywarkę lub pranie na konkretną godzinę.
+* **Skok ceny (Binary Sensor)**: Włącza się automatycznie, gdy cena jest o **30% wyższa** od średniej dobowej. Idealne do wyłączania energochłonnych urządzeń (np. bojlera) w szczycie cenowym.
 
 ---
 
@@ -191,18 +199,15 @@ Aby Home Assistant poprawnie liczył koszty w oficjalnym panelu Energia:
 4. Zapisz zmiany.
 
 <details>
-<summary>🚀 Kliknij, aby zobaczyć planowane funkcje (Roadmap)</summary>
+<summary>🗺️ Roadmap</summary>
 
-### 🟢 Wersja 1.2.1 (W przygotowaniu)
-* **Ceny Brutto dla RCE:** Opcja automatycznego doliczania VAT (23%) do cen rynkowych.
-* **Wybór Operatora:** Możliwość wyboru (np. PGE, Tauron, Enea) w celu dopasowania stawek dystrybucyjnych.
+🟢 Wersja 1.2.2 (W przygotowaniu)
+Obsługa Taryfy G11: Dodanie podstawowej taryfy jednostrefowej do Trybu Porównawczego.
 
-### 🟢Wersja 1.2.2 (W przygotowaniu)
+🟡 Wersja 1.3.0
+Oficjalne API PSE: Pełne przejście na nowe źródła danych Polskich Sieci Elektroenergetycznych.
 
-* **Obsługa Taryfy G11:** Dodanie podstawowej taryfy jednostrefowej do Trybu Porównawczego (na prośbę społeczności).
-
-### 🟡 Wersja 1.3.0 (W przygotowaniu)
-* **Bezpośrednie API PSE:** Przejście na oficjalne źródło danych Polskich Sieci Elektroenergetycznych dla większej stabilności.
+Wybór Operatora: Automatyczne doliczanie stawek dystrybucyjnych dla największych OSD (PGE, Tauron, Enea).
 
 </details>
 

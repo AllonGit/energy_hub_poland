@@ -19,19 +19,23 @@ from .const import (
     CONF_ENERGY_SENSOR,
     CONF_G12_SETTINGS,
     CONF_G12W_SETTINGS,
-    CONF_HOURS_PEAK,
+    CONF_HOURS_PEAK_SUMMER,
+    CONF_HOURS_PEAK_WINTER,
     CONF_OPERATION_MODE,
     CONF_PRICE_OFFPEAK,
     CONF_PRICE_PEAK,
     CONF_SENSOR_TYPE,
-    DEFAULT_G12_PEAK_HOURS,
-    DEFAULT_G12W_PEAK_HOURS,
+    CONF_UNIT_TYPE,
+    DEFAULT_G12_PEAK_HOURS_SUMMER,
+    DEFAULT_G12_PEAK_HOURS_WINTER,
     MODE_COMPARISON,
     MODE_DYNAMIC,
     MODE_G12,
     MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
+    UNIT_KWH,
+    UNIT_MWH,
 )
 
 _LOGGER = logging.getLogger(__package__)
@@ -69,6 +73,8 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             self.config_data.update(user_input)
             mode = user_input[CONF_OPERATION_MODE]
 
+            if mode == MODE_DYNAMIC:
+                return await self.async_step_dynamic_config()
             if mode == MODE_G12:
                 return await self.async_step_g12_config()
             if mode == MODE_G12W:
@@ -76,9 +82,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             if mode == MODE_COMPARISON:
                 return await self.async_step_g12_config()
 
-            return self.async_create_entry(
-                title="Energy Hub Dynamic", data=self.config_data
-            )
+            return self.async_create_entry(title="Energy Hub", data=self.config_data)
 
         return self.async_show_form(
             step_id="user",
@@ -102,13 +106,38 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             ),
         )
 
+    async def async_step_dynamic_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle dynamic tariff configuration."""
+        if user_input is not None:
+            self.config_data.update(user_input)
+            return self.async_create_entry(title="Energy Hub", data=self.config_data)
+
+        return self.async_show_form(
+            step_id="dynamic_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_UNIT_TYPE, default=UNIT_KWH): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[UNIT_KWH, UNIT_MWH],
+                            mode=SelectSelectorMode.DROPDOWN,
+                            translation_key="unit_type",
+                        )
+                    ),
+                }
+            ),
+        )
+
     async def async_step_g12_config(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle G12 tariff configuration."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not validate_hour_format(user_input[CONF_HOURS_PEAK]):
+            if not validate_hour_format(
+                user_input[CONF_HOURS_PEAK_SUMMER]
+            ) or not validate_hour_format(user_input[CONF_HOURS_PEAK_WINTER]):
                 errors["base"] = "invalid_hour_range"
             else:
                 self.config_data[CONF_G12_SETTINGS] = user_input
@@ -126,7 +155,12 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 {
                     vol.Required(CONF_PRICE_PEAK, default=0.80): vol.Coerce(float),
                     vol.Required(CONF_PRICE_OFFPEAK, default=0.50): vol.Coerce(float),
-                    vol.Required(CONF_HOURS_PEAK, default=DEFAULT_G12_PEAK_HOURS): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_SUMMER, default=DEFAULT_G12_PEAK_HOURS_SUMMER
+                    ): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_WINTER, default=DEFAULT_G12_PEAK_HOURS_WINTER
+                    ): str,
                 }
             ),
             errors=errors,
@@ -138,7 +172,9 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
         """Handle G12w tariff configuration."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not validate_hour_format(user_input[CONF_HOURS_PEAK]):
+            if not validate_hour_format(
+                user_input[CONF_HOURS_PEAK_SUMMER]
+            ) or not validate_hour_format(user_input[CONF_HOURS_PEAK_WINTER]):
                 errors["base"] = "invalid_hour_range"
             else:
                 self.config_data[CONF_G12W_SETTINGS] = user_input
@@ -155,7 +191,12 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 {
                     vol.Required(CONF_PRICE_PEAK, default=0.85): vol.Coerce(float),
                     vol.Required(CONF_PRICE_OFFPEAK, default=0.55): vol.Coerce(float),
-                    vol.Required(CONF_HOURS_PEAK, default=DEFAULT_G12W_PEAK_HOURS): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_SUMMER, default=DEFAULT_G12_PEAK_HOURS_SUMMER
+                    ): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_WINTER, default=DEFAULT_G12_PEAK_HOURS_WINTER
+                    ): str,
                 }
             ),
             errors=errors,
@@ -227,11 +268,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
     ) -> FlowResult:
         """Initialize the options flow."""
         try:
-            config = {**self._config_entry.data, **self._config_entry.options}
-            mode = config.get(CONF_OPERATION_MODE)
-            if mode == MODE_DYNAMIC:
-                return self.async_create_entry(title="", data={})
-
             return await self.async_step_reconfigure()
         except Exception as err:
             _LOGGER.error("Options flow init error: %s", err)
@@ -248,13 +284,31 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
 
             if user_input is not None:
                 if mode in [MODE_G12, MODE_COMPARISON]:
-                    val = user_input.get(f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}")
-                    if not validate_hour_format(str(val) if val is not None else ""):
+                    val_s = user_input.get(
+                        f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}"
+                    )
+                    val_w = user_input.get(
+                        f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_WINTER}"
+                    )
+                    if not validate_hour_format(
+                        str(val_s) if val_s is not None else ""
+                    ) or not validate_hour_format(
+                        str(val_w) if val_w is not None else ""
+                    ):
                         errors["base"] = "invalid_g12_hour_range"
 
                 if mode in [MODE_G12W, MODE_COMPARISON]:
-                    val = user_input.get(f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}")
-                    if not validate_hour_format(str(val) if val is not None else ""):
+                    val_s = user_input.get(
+                        f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}"
+                    )
+                    val_w = user_input.get(
+                        f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_WINTER}"
+                    )
+                    if not validate_hour_format(
+                        str(val_s) if val_s is not None else ""
+                    ) or not validate_hour_format(
+                        str(val_w) if val_w is not None else ""
+                    ):
                         errors["base"] = "invalid_g12w_hour_range"
 
                 if mode == MODE_COMPARISON:
@@ -274,9 +328,13 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                                 CONF_PRICE_OFFPEAK: new_options.pop(
                                     f"{CONF_G12_SETTINGS}_{CONF_PRICE_OFFPEAK}", 0.50
                                 ),
-                                CONF_HOURS_PEAK: new_options.pop(
-                                    f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}",
-                                    DEFAULT_G12_PEAK_HOURS,
+                                CONF_HOURS_PEAK_SUMMER: new_options.pop(
+                                    f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}",
+                                    DEFAULT_G12_PEAK_HOURS_SUMMER,
+                                ),
+                                CONF_HOURS_PEAK_WINTER: new_options.pop(
+                                    f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_WINTER}",
+                                    DEFAULT_G12_PEAK_HOURS_WINTER,
                                 ),
                             }
 
@@ -288,9 +346,13 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                                 CONF_PRICE_OFFPEAK: new_options.pop(
                                     f"{CONF_G12W_SETTINGS}_{CONF_PRICE_OFFPEAK}", 0.55
                                 ),
-                                CONF_HOURS_PEAK: new_options.pop(
-                                    f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}",
-                                    DEFAULT_G12W_PEAK_HOURS,
+                                CONF_HOURS_PEAK_SUMMER: new_options.pop(
+                                    f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}",
+                                    DEFAULT_G12_PEAK_HOURS_SUMMER,
+                                ),
+                                CONF_HOURS_PEAK_WINTER: new_options.pop(
+                                    f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_WINTER}",
+                                    DEFAULT_G12_PEAK_HOURS_WINTER,
                                 ),
                             }
 
@@ -303,6 +365,21 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
             g12w_settings = config.get(CONF_G12W_SETTINGS) or {}
 
             schema = {}
+
+            if mode == MODE_DYNAMIC:
+                schema.update(
+                    {
+                        vol.Required(
+                            CONF_UNIT_TYPE, default=config.get(CONF_UNIT_TYPE, UNIT_KWH)
+                        ): SelectSelector(
+                            SelectSelectorConfig(
+                                options=[UNIT_KWH, UNIT_MWH],
+                                mode=SelectSelectorMode.DROPDOWN,
+                                translation_key="unit_type",
+                            )
+                        ),
+                    }
+                )
 
             if mode == MODE_COMPARISON:
                 schema.update(
@@ -341,9 +418,15 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                             default=g12_settings.get(CONF_PRICE_OFFPEAK, 0.50),
                         ): vol.Coerce(float),
                         vol.Required(
-                            f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK}",
+                            f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}",
                             default=g12_settings.get(
-                                CONF_HOURS_PEAK, DEFAULT_G12_PEAK_HOURS
+                                CONF_HOURS_PEAK_SUMMER, DEFAULT_G12_PEAK_HOURS_SUMMER
+                            ),
+                        ): str,
+                        vol.Required(
+                            f"{CONF_G12_SETTINGS}_{CONF_HOURS_PEAK_WINTER}",
+                            default=g12_settings.get(
+                                CONF_HOURS_PEAK_WINTER, DEFAULT_G12_PEAK_HOURS_WINTER
                             ),
                         ): str,
                     }
@@ -361,9 +444,15 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                             default=g12w_settings.get(CONF_PRICE_OFFPEAK, 0.55),
                         ): vol.Coerce(float),
                         vol.Required(
-                            f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK}",
+                            f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_SUMMER}",
                             default=g12w_settings.get(
-                                CONF_HOURS_PEAK, DEFAULT_G12W_PEAK_HOURS
+                                CONF_HOURS_PEAK_SUMMER, DEFAULT_G12_PEAK_HOURS_SUMMER
+                            ),
+                        ): str,
+                        vol.Required(
+                            f"{CONF_G12W_SETTINGS}_{CONF_HOURS_PEAK_WINTER}",
+                            default=g12w_settings.get(
+                                CONF_HOURS_PEAK_WINTER, DEFAULT_G12_PEAK_HOURS_WINTER
                             ),
                         ): str,
                     }

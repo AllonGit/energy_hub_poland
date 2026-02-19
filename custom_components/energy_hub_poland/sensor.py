@@ -21,8 +21,11 @@ from .const import (
     CONF_ENERGY_SENSOR,
     CONF_G12_SETTINGS,
     CONF_G12W_SETTINGS,
+    CONF_HOURS_PEAK_SUMMER,
+    CONF_HOURS_PEAK_WINTER,
     CONF_OPERATION_MODE,
     CONF_SENSOR_TYPE,
+    CONF_UNIT_TYPE,
     DOMAIN,
     MODE_COMPARISON,
     MODE_DYNAMIC,
@@ -30,10 +33,18 @@ from .const import (
     MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
+    UNIT_KWH,
+    UNIT_MWH,
 )
 from .coordinator import EnergyHubDataCoordinator
 from .entity import EnergyHubEntity as EnergyHubBaseEntity
-from .helpers import get_current_g12_price, get_current_g12w_price
+from .helpers import (
+    get_current_g12_price,
+    get_current_g12w_price,
+    is_peak_time,
+    is_summer_time,
+    parse_hour_ranges,
+)
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -72,6 +83,10 @@ def setup_dynamic_sensors(
         MinMaxPriceSensor(coordinator, entry, "today", "max"),
         MinMaxPriceSensor(coordinator, entry, "tomorrow", "min"),
         MinMaxPriceSensor(coordinator, entry, "tomorrow", "max"),
+        AveragePriceSensor(coordinator, entry, "today"),
+        AveragePriceSensor(coordinator, entry, "tomorrow"),
+        CheapestHourSensor(coordinator, entry, "today"),
+        CheapestHourSensor(coordinator, entry, "tomorrow"),
     ]
 
 
@@ -83,7 +98,10 @@ def setup_g12_sensors(
 ) -> list[SensorEntity]:
     """Set up G12/G12w tariff sensors."""
     tariff_name = "g12w" if is_g12w else "g12"
-    return [CurrentPriceSensor(coordinator, entry, tariff_name, config)]
+    return [
+        CurrentPriceSensor(coordinator, entry, tariff_name, config),
+        CurrentTariffSensor(coordinator, entry, tariff_name, config),
+    ]
 
 
 def setup_comparison_sensors(
@@ -94,6 +112,8 @@ def setup_comparison_sensors(
         CurrentPriceSensor(coordinator, entry, "dynamic"),
         CurrentPriceSensor(coordinator, entry, "g12", config),
         CurrentPriceSensor(coordinator, entry, "g12w", config),
+        CurrentTariffSensor(coordinator, entry, "g12", config),
+        CurrentTariffSensor(coordinator, entry, "g12w", config),
     ]
     if config.get(CONF_ENERGY_SENSOR):
         sensors.append(RecommendationSensor(coordinator, entry))
@@ -130,6 +150,32 @@ class EnergyConsumerEntity(EnergyHubEntity, RestoreEntity):
         self._energy_sensor_id = self._config.get(CONF_ENERGY_SENSOR)
         self._sensor_type = self._config.get(CONF_SENSOR_TYPE)
         self._last_energy_reading: float | None = None
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity which will be added."""
+        await super().async_added_to_hass()
+
+        if self._energy_sensor_id:
+            if (state := self.hass.states.get(self._energy_sensor_id)) is not None:
+                try:
+                    self._last_energy_reading = float(state.state)
+                except (ValueError, TypeError):
+                    pass
+
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, [self._energy_sensor_id], self._handle_energy_change
+                )
+            )
+            self.async_on_remove(
+                async_track_time_change(
+                    self.hass, self._reset_state, hour=0, minute=0, second=5
+                )
+            )
+
+    @callback
+    def _reset_state(self, now: datetime) -> None:
+        """Reset state on period transition."""
 
     @callback
     def _handle_energy_change(self, event: Any) -> None:
@@ -204,25 +250,6 @@ class RecommendationSensor(EnergyConsumerEntity):
                 saved_costs = last_state.attributes["costs"]
                 self._costs = {k: float(v) for k, v in saved_costs.items()}
 
-        # Initialize last reading from the energy sensor's current state
-        if self._energy_sensor_id:
-            if (state := self.hass.states.get(self._energy_sensor_id)) is not None:
-                try:
-                    self._last_energy_reading = float(state.state)
-                except (ValueError, TypeError):
-                    pass
-
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, [self._energy_sensor_id], self._handle_energy_change
-                )
-            )
-            self.async_on_remove(
-                async_track_time_change(
-                    self.hass, self._reset_state, hour=0, minute=0, second=5
-                )
-            )
-
     @callback
     def _reset_state(self, now: datetime) -> None:
         """Reset the cost values."""
@@ -280,11 +307,91 @@ class RecommendationSensor(EnergyConsumerEntity):
         }
 
 
-class CurrentPriceSensor(EnergyHubEntity):
-    """Sensor for the current energy price."""
+class CurrentTariffSensor(EnergyHubEntity):
+    """Sensor for the current tariff (peak/off-peak)."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["szczyt", "poza_szczytem"]
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        tariff: str,
+        config: dict,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, entry)
+        self._tariff = tariff
+        self._config = config
+        self._attr_translation_key = "current_tariff"
+        self._attr_unique_id = f"current_tariff_{tariff}_{entry.entry_id}"
+        # If comparison mode, we need distinct names
+        if self._config.get(CONF_OPERATION_MODE) == MODE_COMPARISON:
+            self._attr_translation_key = f"current_tariff_{tariff}"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the current tariff."""
+        now = dt_util.now()
+        settings = self._config.get(
+            CONF_G12W_SETTINGS if self._tariff == "g12w" else CONF_G12_SETTINGS, {}
+        )
+
+        if self._tariff == "g12w":
+            from .helpers import _POLISH_HOLIDAYS
+
+            if now.weekday() >= 5 or now.date() in _POLISH_HOLIDAYS:
+                return "poza_szczytem"
+
+        if is_summer_time(now):
+            peak_hours_str = settings.get(CONF_HOURS_PEAK_SUMMER) or settings.get(
+                "hours_peak", ""
+            )
+        else:
+            peak_hours_str = settings.get(CONF_HOURS_PEAK_WINTER) or settings.get(
+                "hours_peak", ""
+            )
+
+        peak_hours = parse_hour_ranges(peak_hours_str)
+        if is_peak_time(now, peak_hours):
+            return "szczyt"
+        return "poza_szczytem"
+
+
+class DynamicPriceEntity(EnergyHubEntity):
+    """Base class for dynamic price entities."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_native_unit_of_measurement = "PLN/kWh"
+
+    def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
+        """Initialize the entity."""
+        super().__init__(coordinator, entry)
+        self._config = {**entry.data, **entry.options}
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit of measurement."""
+        unit = self._config.get(CONF_UNIT_TYPE, UNIT_KWH)
+        return f"PLN/{'kWh' if unit == UNIT_KWH else 'MWh'}"
+
+    def _get_day_prices(self, day: str) -> dict[int, float] | None:
+        """Get prices for a given day."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(day)
+
+    def _scale_price(self, val: float | None, precision: int = 4) -> float | None:
+        """Scale price based on unit settings."""
+        if val is None:
+            return None
+        if self._config.get(CONF_UNIT_TYPE) == UNIT_MWH:
+            return round(val * 1000, 2)
+        return round(val, precision)
+
+
+class CurrentPriceSensor(DynamicPriceEntity):
+    """Sensor for the current energy price."""
 
     def __init__(
         self,
@@ -296,18 +403,23 @@ class CurrentPriceSensor(EnergyHubEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._tariff = tariff
-        self._config = {**entry.data, **entry.options}
         self._attr_translation_key = f"current_price_{tariff}"
         self._attr_unique_id = f"current_price_{tariff}_{entry.entry_id}"
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit of measurement."""
+        if self._tariff != "dynamic":
+            return "PLN/kWh"
+        return super().native_unit_of_measurement
 
     @property
     def native_value(self) -> float | None:
         now = dt_util.now()
         if self._tariff == "dynamic":
-            if not self.coordinator.data:
-                return None
-            prices = self.coordinator.data.get("today", {})
-            return prices.get(now.hour) if prices else None
+            prices = self._get_day_prices("today")
+            val = prices.get(now.hour) if prices else None
+            return self._scale_price(val)
         elif self._tariff == "g12" and self._config:
             return get_current_g12_price(now, self._config.get(CONF_G12_SETTINGS, {}))
         elif self._tariff == "g12w" and self._config:
@@ -326,11 +438,59 @@ class CurrentPriceSensor(EnergyHubEntity):
         return {}
 
 
-class MinMaxPriceSensor(EnergyHubEntity):
-    """Sensor for the minimum or maximum energy price of the day."""
+class AveragePriceSensor(DynamicPriceEntity):
+    """Sensor for the average energy price of the day."""
 
-    _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_native_unit_of_measurement = "PLN/kWh"
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        day: str,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, entry)
+        self._day = day
+        self._attr_translation_key = f"average_price_{day}"
+        self._attr_unique_id = f"average_price_{day}_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> float | None:
+        if (prices := self._get_day_prices(self._day)) is None or not prices:
+            return None
+        avg = sum(prices.values()) / len(prices)
+        return self._scale_price(avg)
+
+
+class CheapestHourSensor(EnergyHubEntity):
+    """Sensor for the hour with the lowest energy price."""
+
+    _attr_icon = "mdi:clock-outline"
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        day: str,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, entry)
+        self._day = day
+        self._attr_translation_key = f"cheapest_hour_{day}"
+        self._attr_unique_id = f"cheapest_hour_{day}_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> str | None:
+        if not self.coordinator.data:
+            return None
+        prices = self.coordinator.data.get(self._day, {})
+        if not prices:
+            return None
+        cheapest_hour = min(prices, key=prices.get)
+        return f"{cheapest_hour:02d}:00"
+
+
+class MinMaxPriceSensor(DynamicPriceEntity):
+    """Sensor for the minimum or maximum energy price of the day."""
 
     def __init__(
         self,
@@ -348,24 +508,19 @@ class MinMaxPriceSensor(EnergyHubEntity):
 
     @property
     def native_value(self) -> float | None:
-        if not self.coordinator.data:
+        if (prices := self._get_day_prices(self._day)) is None or not prices:
             return None
-        prices = self.coordinator.data.get(self._day, {})
-        if not prices:
-            return None
-        return min(prices.values()) if self._mode == "min" else max(prices.values())
+        val = min(prices.values()) if self._mode == "min" else max(prices.values())
+        return self._scale_price(val)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        if not self.coordinator.data:
-            return {"prices": {}}
-        prices = self.coordinator.data.get(self._day, {})
-        value = self.native_value
-        if not prices or value is None:
+        if (prices := self._get_day_prices(self._day)) is None or not prices:
             return {"prices": {}}
 
-        hours = [f"{h:02d}:00" for h, p in prices.items() if p == value]
-        attributes = {"prices": prices}
+        raw_val = min(prices.values()) if self._mode == "min" else max(prices.values())
+        hours = [f"{h:02d}:00" for h, p in prices.items() if p == raw_val]
+        attributes: dict[str, Any] = {"prices": prices}
         if len(hours) == 1:
             attributes["hour"] = hours[0]
         else:
@@ -406,25 +561,6 @@ class CostSensor(EnergyConsumerEntity):
                 self._native_value = float(last_state.state)
             except (ValueError, TypeError):
                 self._native_value = 0.0
-
-        # Initialize last reading from the energy sensor's current state
-        if self._energy_sensor_id:
-            if (state := self.hass.states.get(self._energy_sensor_id)) is not None:
-                try:
-                    self._last_energy_reading = float(state.state)
-                except (ValueError, TypeError):
-                    pass
-
-        self.async_on_remove(
-            async_track_state_change_event(
-                self.hass, [self._energy_sensor_id], self._handle_energy_change
-            )
-        )
-        self.async_on_remove(
-            async_track_time_change(
-                self.hass, self._reset_state, hour=0, minute=0, second=5
-            )
-        )
 
     @callback
     def _reset_state(self, now: datetime) -> None:

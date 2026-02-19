@@ -14,5 +14,5 @@
     "async_timeout>=4.0.0",
     "holidays>=0.40"
   ],
-  "version": "1.2.0"
+  "version": "1.2.1"
 }

@@ -81,7 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 _LOGGER.info("Migrating unique ID from %s to %s", old_uid, new_uid)
                 registry.async_update_entity(entity.entity_id, new_unique_id=new_uid)
 
-    coordinator = EnergyHubDataCoordinator(hass)
+    coordinator = EnergyHubDataCoordinator(hass, entry)
     # Load cache immediately to avoid setup timeouts and provide data to sensors fast
     await coordinator._load_cache()
     await coordinator.async_config_entry_first_refresh()

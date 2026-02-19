@@ -14,6 +14,9 @@ CONF_G12W_SETTINGS = "g12w_settings"
 CONF_PRICE_PEAK = "price_peak"
 CONF_PRICE_OFFPEAK = "price_offpeak"
 CONF_HOURS_PEAK = "hours_peak"
+CONF_HOURS_PEAK_SUMMER = "hours_peak_summer"
+CONF_HOURS_PEAK_WINTER = "hours_peak_winter"
+CONF_UNIT_TYPE = "unit_type"
 
 
 MODE_DYNAMIC = "dynamic"
@@ -28,3 +31,9 @@ SENSOR_TYPE_DAILY = "daily"
 
 DEFAULT_G12_PEAK_HOURS = "6-13,15-22"
 DEFAULT_G12W_PEAK_HOURS = "6-13,15-22"
+
+DEFAULT_G12_PEAK_HOURS_SUMMER = "8-11,15-22"
+DEFAULT_G12_PEAK_HOURS_WINTER = "8-11,13-21"
+
+UNIT_KWH = "kwh"
+UNIT_MWH = "mwh"

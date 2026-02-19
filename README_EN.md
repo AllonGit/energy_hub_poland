@@ -68,6 +68,16 @@ The integration's most powerful feature.
 
 ---
 
+## 🚀 New Sensors and Automations
+
+In version v1.2.1, we've introduced sensors to simplify home automation:
+
+* **Average Daily Price**: Compare the current price with the average price for today and tomorrow.
+* **Low Price Hour**: Schedule a dishwasher or laundry for a specific time.
+* **Price Jump (Binary Sensor)**: Automatically turns on when the price is **30% higher** than the daily average. Ideal for turning off energy-intensive devices (e.g., a boiler) during price peaks.
+
+---
+
 ## 💡 Usage Examples
 
 Here is how you can leverage Energy Hub Poland in your automations:
