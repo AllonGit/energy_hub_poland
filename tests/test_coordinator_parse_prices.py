@@ -1,14 +1,13 @@
 """Tests for EnergyHubDataCoordinator._parse_prices()."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from zoneinfo import ZoneInfo
 
-from tests.common import ENTRY_ID, make_raw_api_data
-
-from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
 from custom_components.energy_hub_poland import coordinator as coord_module
+from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
+from tests.common import ENTRY_ID, make_raw_api_data
 
 # The coordinator uses dt_util.DEFAULT_TIME_ZONE — patch it to a real tz
 WARSAW = ZoneInfo("Europe/Warsaw")
@@ -22,8 +21,10 @@ def _make_coordinator():
     coord.store = MagicMock()
     coord._cache_loaded = False
     coord._internal_data = {
-        "today": None, "today_date": None,
-        "tomorrow": None, "tomorrow_date": None,
+        "today": None,
+        "today_date": None,
+        "tomorrow": None,
+        "tomorrow_date": None,
     }
     coord.last_update_time = None
     coord.api_connected = True

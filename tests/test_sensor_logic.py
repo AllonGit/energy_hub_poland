@@ -6,8 +6,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
-
 from custom_components.energy_hub_poland.const import (
     CONF_G12_SETTINGS,
     CONF_G12W_SETTINGS,
@@ -22,13 +20,12 @@ from custom_components.energy_hub_poland.const import (
 from custom_components.energy_hub_poland.sensor import (
     AveragePriceSensor,
     CheapestHourSensor,
-    CostSensor,
-    CurrentPriceSensor,
     DynamicPriceEntity,
     EnergyConsumerEntity,
     MinMaxPriceSensor,
     SavingsSensor,
 )
+from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
 CET = timezone(timedelta(hours=1))
 
@@ -301,9 +298,7 @@ class TestSavingsGetCurrentPrice:
 
         sensor = self._make_sensor("dynamic", "g12", data)
 
-        with patch(
-            "custom_components.energy_hub_poland.sensor.dt_util"
-        ) as mock_dt:
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
             price = sensor._get_current_price()
             # g12 peak (0.80) - dynamic (0.45) = 0.35
@@ -314,9 +309,7 @@ class TestSavingsGetCurrentPrice:
 
         sensor = self._make_sensor("dynamic", "g12", data)
 
-        with patch(
-            "custom_components.energy_hub_poland.sensor.dt_util"
-        ) as mock_dt:
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
             price = sensor._get_current_price()
             assert price is None

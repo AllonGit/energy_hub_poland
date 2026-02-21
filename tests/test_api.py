@@ -1,8 +1,7 @@
 """Tests for EnergyHubApiClient."""
 
-import asyncio
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -42,7 +41,7 @@ class TestAsyncGetPrices:
 
     @pytest.mark.asyncio
     async def test_timeout_returns_none(self, api_client, mock_session):
-        mock_session.get = AsyncMock(side_effect=asyncio.TimeoutError())
+        mock_session.get = AsyncMock(side_effect=TimeoutError())
 
         result = await api_client.async_get_prices(date(2025, 1, 15))
         assert result is None

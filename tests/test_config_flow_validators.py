@@ -5,7 +5,6 @@ from custom_components.energy_hub_poland.config_flow import (
     validate_hour_format,
 )
 
-
 # ============================================================
 # validate_hour_format
 # ============================================================

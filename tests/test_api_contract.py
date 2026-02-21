@@ -14,7 +14,6 @@ import aiohttp
 import pytest
 
 from custom_components.energy_hub_poland.api import EnergyHubApiClient
-from custom_components.energy_hub_poland.const import API_URL
 
 pytestmark = pytest.mark.contract
 
@@ -48,7 +47,8 @@ class TestApiContract:
         data = await api_client.async_get_prices(date.today())
         assert data is not None
         record = data[0]
-        assert "date_time" in record, f"Missing 'date_time' key. Keys: {list(record.keys())}"
+        msg = f"Missing 'date_time' key. Keys: {list(record.keys())}"
+        assert "date_time" in record, msg
 
     @pytest.mark.asyncio
     async def test_date_time_format(self, api_client):
@@ -68,7 +68,8 @@ class TestApiContract:
         data = await api_client.async_get_prices(date.today())
         assert data is not None
         record = data[0]
-        assert "attributes" in record, f"Missing 'attributes' key. Keys: {list(record.keys())}"
+        msg = f"Missing 'attributes' key. Keys: {list(record.keys())}"
+        assert "attributes" in record, msg
         assert isinstance(record["attributes"], list), "attributes should be a list"
 
     @pytest.mark.asyncio
@@ -96,19 +97,19 @@ class TestApiContract:
         price_attrs = [a for a in record["attributes"] if a.get("name") == "price"]
         assert price_attrs
         price = float(price_attrs[0]["value"])
-        assert -500 < price < 5000, (
-            f"Price {price} PLN/MWh is outside expected range. "
-            f"Unit may have changed."
-        )
+        msg = f"Price {price} PLN/MWh outside expected range."
+        assert -500 < price < 5000, msg
 
     @pytest.mark.asyncio
     async def test_full_parse_roundtrip(self, api_client):
         """End-to-end: fetch + parse should produce 24 hourly prices."""
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import patch
         from zoneinfo import ZoneInfo
 
-        from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
         from custom_components.energy_hub_poland import coordinator as coord_module
+        from custom_components.energy_hub_poland.coordinator import (
+            EnergyHubDataCoordinator,
+        )
 
         data = await api_client.async_get_prices(date.today())
         assert data is not None

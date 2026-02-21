@@ -1,12 +1,18 @@
 build:
-  - ".github/workflows/**/*"
-  - "pyproject.toml"
-  - ".pre-commit-config.yaml"
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**/*"
+          - "pyproject.toml"
+          - ".pre-commit-config.yaml"
 
 integration:
-  - "custom_components/**/*"
+  - changed-files:
+      - any-glob-to-any-file:
+          - "custom_components/**/*"
 
 documentation:
-  - "README.md"
-  - "LICENSE"
-  - "doc/**/*"
+  - changed-files:
+      - any-glob-to-any-file:
+          - "README.md"
+          - "LICENSE"
+          - "doc/**/*"

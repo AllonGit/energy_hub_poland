@@ -2,14 +2,13 @@
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
-
-from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
+from unittest.mock import MagicMock, patch
 
 from custom_components.energy_hub_poland.binary_sensor import (
     ApiStatusBinarySensor,
     PriceSpikeBinarySensor,
 )
+from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
 
 def _make_spike_sensor(coordinator, entry=None):

@@ -1,6 +1,6 @@
 """Tests for custom_components/energy_hub_poland/helpers.py."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -40,7 +40,7 @@ class TestIsSummerTime:
         assert is_summer_time(dt) is False
 
     def test_utc_returns_false(self):
-        dt = datetime(2025, 7, 15, 12, 0, 0, tzinfo=timezone.utc)
+        dt = datetime(2025, 7, 15, 12, 0, 0, tzinfo=UTC)
         assert is_summer_time(dt) is False
 
     def test_fixed_offset_returns_false(self):
@@ -124,12 +124,18 @@ class TestIsPeakTime:
 class TestGetSeasonalPeakHoursStr:
     def test_summer_uses_summer_key(self):
         dt = datetime(2025, 7, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {"hours_peak_summer": "8-11,15-22", "hours_peak_winter": "8-11,13-21"}
+        settings = {
+            "hours_peak_summer": "8-11,15-22",
+            "hours_peak_winter": "8-11,13-21",
+        }
         assert get_seasonal_peak_hours_str(dt, settings) == "8-11,15-22"
 
     def test_winter_uses_winter_key(self):
         dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {"hours_peak_summer": "8-11,15-22", "hours_peak_winter": "8-11,13-21"}
+        settings = {
+            "hours_peak_summer": "8-11,15-22",
+            "hours_peak_winter": "8-11,13-21",
+        }
         assert get_seasonal_peak_hours_str(dt, settings) == "8-11,13-21"
 
     def test_fallback_to_hours_peak(self):

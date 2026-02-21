@@ -1,23 +1,24 @@
 """Tests for EnergyHubDataCoordinator._async_update_data() — day transition, cache, retry."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY, SAMPLE_PRICES_TOMORROW
-
-from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
 from custom_components.energy_hub_poland import coordinator as coord_module
+from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
+from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY, SAMPLE_PRICES_TOMORROW
 
 # The coordinator raises UpdateFailed from HA — use the stub from conftest
 UpdateFailed = coord_module.UpdateFailed
 
 
 def _make_coordinator(
-    today=None, today_date=None,
-    tomorrow=None, tomorrow_date=None,
+    today=None,
+    today_date=None,
+    tomorrow=None,
+    tomorrow_date=None,
     cache_loaded=True,
 ):
     """Create a coordinator with controllable internal state."""
@@ -40,13 +41,17 @@ def _make_coordinator(
 def _patch_now(dt: datetime):
     """Patch dt_util.now() and dt_util.utcnow() on the coordinator module."""
     return patch.object(
-        coord_module.dt_util, "now", return_value=dt,
+        coord_module.dt_util,
+        "now",
+        return_value=dt,
     )
 
 
 def _patch_utcnow(dt: datetime):
     return patch.object(
-        coord_module.dt_util, "utcnow", return_value=dt,
+        coord_module.dt_util,
+        "utcnow",
+        return_value=dt,
     )
 
 
@@ -55,7 +60,7 @@ PRICES_TOMORROW = dict(SAMPLE_PRICES_TOMORROW)
 TODAY = date(2025, 1, 15)
 TOMORROW = date(2025, 1, 16)
 NOW = datetime(2025, 1, 15, 14, 0, 0, tzinfo=timezone(timedelta(hours=1)))
-NOW_UTC = datetime(2025, 1, 15, 13, 0, 0, tzinfo=timezone.utc)
+NOW_UTC = datetime(2025, 1, 15, 13, 0, 0, tzinfo=UTC)
 
 
 # ============================================================
@@ -107,7 +112,7 @@ class TestDayTransition:
     @pytest.mark.asyncio
     async def test_transition_then_fetch_new_today(self):
         """After transition, if transitioned today is wrong date, fetch new data."""
-        new_today_prices = {h: 0.99 for h in range(24)}
+        new_today_prices = dict.fromkeys(range(24), 0.99)
         coord = _make_coordinator(
             today=PRICES_TODAY,
             today_date=date(2025, 1, 14),
@@ -153,7 +158,8 @@ class TestCache:
     async def test_cache_not_loaded_on_subsequent_runs(self):
         """_load_cache is NOT called when cache_loaded is True."""
         coord = _make_coordinator(
-            today=PRICES_TODAY, today_date=TODAY,
+            today=PRICES_TODAY,
+            today_date=TODAY,
             cache_loaded=True,
         )
         coord._load_cache = AsyncMock()
@@ -179,8 +185,10 @@ class TestCache:
     async def test_cache_not_saved_when_no_change(self):
         """_save_cache is NOT called when data didn't change."""
         coord = _make_coordinator(
-            today=PRICES_TODAY, today_date=TODAY,
-            tomorrow=PRICES_TOMORROW, tomorrow_date=TOMORROW,
+            today=PRICES_TODAY,
+            today_date=TODAY,
+            tomorrow=PRICES_TOMORROW,
+            tomorrow_date=TOMORROW,
         )
         coord._fetch_data = AsyncMock(return_value=None)
 
@@ -205,7 +213,8 @@ class TestCache:
         coord.data = None
 
         with patch.object(
-            coord_module.dt_util, "parse_datetime",
+            coord_module.dt_util,
+            "parse_datetime",
             side_effect=datetime.fromisoformat,
         ):
             await coord._load_cache()
@@ -247,7 +256,8 @@ class TestApiFailure:
     async def test_api_failure_with_cached_today_still_works(self):
         """If API fails but we have cached today data, return it (no raise)."""
         coord = _make_coordinator(
-            today=PRICES_TODAY, today_date=TODAY,
+            today=PRICES_TODAY,
+            today_date=TODAY,
         )
         coord._fetch_data = AsyncMock(return_value=None)
 
@@ -274,7 +284,8 @@ class TestApiFailure:
     async def test_api_failure_sets_disconnected_only_when_no_data(self):
         """api_connected=False only when today data is completely empty."""
         coord = _make_coordinator(
-            today=PRICES_TODAY, today_date=date(2025, 1, 14),  # stale date
+            today=PRICES_TODAY,
+            today_date=date(2025, 1, 14),  # stale date
         )
         coord._fetch_data = AsyncMock(return_value=None)
 
@@ -290,7 +301,8 @@ class TestApiFailure:
     async def test_tomorrow_fetch_failure_is_silent(self):
         """Failure to fetch tomorrow's data is not an error."""
         coord = _make_coordinator(
-            today=PRICES_TODAY, today_date=TODAY,
+            today=PRICES_TODAY,
+            today_date=TODAY,
         )
 
         async def mock_fetch(fetch_date):

@@ -26,3 +26,7 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_CHECKOV: true
+          VALIDATE_GITLEAKS: true
+          VALIDATE_PYTHON_RUFF: true
+          VALIDATE_PYTHON_MYPY: true

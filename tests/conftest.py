@@ -7,10 +7,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-
 # =============================================================================
 # Stub HA modules with proper base classes to avoid metaclass conflicts
 # =============================================================================
+
 
 def _identity_decorator(*args, **kwargs):
     """Decorator that returns the function/class unchanged."""
@@ -21,35 +21,42 @@ def _identity_decorator(*args, **kwargs):
 
 # --- Stub base classes ---
 
+
 class _StubCoordinatorEntity:
     """Stub for homeassistant.helpers.update_coordinator.CoordinatorEntity."""
+
     def __init__(self, coordinator=None):
         self.coordinator = coordinator
 
 
 class _StubSensorEntity:
     """Stub for homeassistant.components.sensor.SensorEntity."""
+
     pass
 
 
 class _StubBinarySensorEntity:
     """Stub for homeassistant.components.binary_sensor.BinarySensorEntity."""
+
     pass
 
 
 class _StubRestoreEntity:
     """Stub for homeassistant.helpers.restore_state.RestoreEntity."""
+
     async def async_get_last_state(self):
         return None
 
 
 class _StubConfigFlow:
     """Stub for homeassistant.config_entries.ConfigFlow."""
+
     pass
 
 
 class _StubOptionsFlow:
     """Stub for homeassistant.config_entries.OptionsFlow."""
+
     pass
 
 
@@ -147,7 +154,13 @@ sys.modules.setdefault("voluptuous", vol_mock)
 # Imports & Fixtures
 # =============================================================================
 
-from .common import CET, CEST, ENTRY_ID, SAMPLE_PRICES_TODAY, SAMPLE_PRICES_TOMORROW
+from .common import (  # noqa: E402, I001
+    CEST,
+    CET,
+    ENTRY_ID,
+    SAMPLE_PRICES_TODAY,
+    SAMPLE_PRICES_TOMORROW,
+)
 
 
 @pytest.fixture
