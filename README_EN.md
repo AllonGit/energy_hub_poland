@@ -200,6 +200,12 @@ Found a bug? Report it in the [Issues](https://github.com/AllonGit/energy_hub_po
 
 Discussions and feature requests: [Discussions](https://github.com/AllonGit/energy_hub_poland/discussions).
 
+## 🏅 Credits & Acknowledgments
+
+This project thrives thanks to community involvement. Special thanks to:
+
+* **[@abnvle](https://github.com/abnvle)** – for designing and implementing a comprehensive testing architecture (over 1,500 lines of code!). Your contribution has fundamentally improved the stability and professionalism of this repository.
+
 ### ⚖️ License and Legal Notice
 This project is licensed under the **Apache 2.0** license.
 

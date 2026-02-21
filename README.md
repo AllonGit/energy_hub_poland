@@ -222,6 +222,12 @@ Więcej szczegółów znajdziesz w dokumentacji:
 
 💬 [Dyskusje](https://github.com/AllonGit/energy_hub_poland/discussions) – masz pomysł na nową funkcję? Napisz!
 
+## 🏅 Podziękowania
+
+Projekt rozwija się dzięki zaangażowaniu społeczności. Szczególne podziękowania dla:
+
+* **[@abnvle](https://github.com/abnvle)** – za zaprojektowanie i wdrożenie kompleksowej architektury testowej (ponad 1500 linii kodu!). Twój wkład fundamentalnie podniósł stabilność i profesjonalizm tego repozytorium.
+
 ## ⚖️ Licencja i Nota Prawna
 Ten projekt jest licencjonowany na podstawie licencji **Apache 2.0**.
 
