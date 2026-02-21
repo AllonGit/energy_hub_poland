@@ -1,12 +1,32 @@
-build:
-  - ".github/workflows/**/*"
-  - "pyproject.toml"
-  - ".pre-commit-config.yaml"
+# .github/labeler.yml
 
 integration:
-  - "custom_components/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "custom_components/**/*"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "tests/**/*"
 
 documentation:
-  - "README.md"
-  - "LICENSE"
-  - "doc/**/*"
+  - changed-files:
+      - any-glob-to-any-file:
+          - "README.md"
+          - "LICENSE"
+          - "doc/**/*"
+          - "docs/**/*"
+
+build:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/workflows/**/*"
+          - "pyproject.toml"
+          - "requirements*.txt"
+          - ".pre-commit-config.yaml"
+          - ".gitignore"
+
+tools:
+  - changed-files:
+      - any-glob-to-any-file: 
+          - "scripts/**/*"
+          - "setup.py"
