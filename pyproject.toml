@@ -12,3 +12,10 @@ select = [
     "UP",   # pyupgrade
 ]
 ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "contract: tests that call the real API (require internet)",
+]
