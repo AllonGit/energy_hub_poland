@@ -3,7 +3,7 @@
 
 ![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge&color=blue)
 ![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge&color=green)
-![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=for-the-badge)
+![HACS](https://img.shields.io/badge/HACS-Default-orange?style=for-the-badge)
 ![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
 ![GitHub stars](https://img.shields.io/github/stars/AllonGit/energy_hub_poland?style=social)
 
