@@ -323,8 +323,9 @@ class RecommendationSensor(EnergyConsumerEntity):
         for k, v in self._costs.items():
             if k != "dynamic":
                 attrs[f"savings_{k}_vs_dynamic"] = round(
-                    dyn_cost - v, 2
-                )  # # type: ignore
+                    dyn_cost - v,
+                    2,  # type: ignore
+                )
         return attrs
 
 
