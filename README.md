@@ -63,19 +63,17 @@ Najpotężniejsza funkcja integracji.
 2. Kliknij przycisk **Dodaj integrację**.
 3. Wyszukaj **Energy Hub Poland**.
 4. Postępuj zgodnie z kreatorem konfiguracji:
-   * Wybierz domyślny tryb pracy.
-   * Wprowadź swój licznik energii (wymagany do obliczania kosztów).
-   * Zdefiniuj godziny szczytu (jeśli używasz G12).
 
 ---
 
-## 🚀 Nowe Sensory i Automatyzacje
+## 🆕 Co nowego (Wersja 1.2.2)
 
-W wersji v1.2.1 wprowadziliśmy sensory ułatwiające automatyzację domu:
+**Precyzyjne ceny dynamiczne**: Dzięki dogłębnej analizie API PGE DataHub, ceny są teraz idealnie zsynchronizowane z czasem lokalnym w Polsce (Europe/Warsaw)
 
-* **Średnia cena dobowa**: Porównuj aktualną cenę z przeciętną ceną dnia (`dziś` i `jutro`).
-* **Godzina najniższej ceny**: Zaplanuj zmywarkę lub pranie na konkretną godzinę.
-* **Skok ceny (Binary Sensor)**: Włącza się automatycznie, gdy cena jest o **30% wyższa** od średniej dobowej. Idealne do wyłączania energochłonnych urządzeń (np. bojlera) w szczycie cenowym.
+**Moduł porównywania taryf**: Teraz możesz w czasie rzeczywistym porównywać cenę dynamiczną RCE ze swoją obecną taryfą (G11, G12, G12w, G12n, G13).
+**Zastosowanie**: Ułatwia podjęcie decyzji o przejściu na rozliczenia dynamiczne oraz optymalizację kosztów energii.
+
+**Pełna zgodność z ApexCharts**: Atrybuty today_prices oraz tomorrow_prices są teraz generowane z poprawnymi timestampami, co pozwala na budowanie idealnych wykresów prognoz.
 
 ---
 
@@ -143,25 +141,25 @@ apex_config:
             color: "#fff"
             background: "#e74c3c"
 series:
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
     name: Aktualna
     color: "#03A9F4"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_minimalna_dzis
+  - entity: sensor.energy_hub_minimalna_cena_dzis
     name: Min Dziś
     color: "#00E676"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_maksymalna_dzis
+  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
     name: Max Dziś
     color: "#FF1744"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+  - entity: sensor.energy_hub_maksymalna_cena_dzis
     name: Cena
     type: area
     show:
