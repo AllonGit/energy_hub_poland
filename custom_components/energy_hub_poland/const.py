@@ -43,8 +43,8 @@ MODE_G13 = "g13"
 MODE_COMPARISON = "comparison"
 
 # Units
-UNIT_KWH = "kWh"
-UNIT_MWH = "MWh"
+UNIT_KWH = "kwh"
+UNIT_MWH = "mwh"
 
 # Energy Providers (used for pre-filling standard hours)
 PROVIDER_CUSTOM = "custom"

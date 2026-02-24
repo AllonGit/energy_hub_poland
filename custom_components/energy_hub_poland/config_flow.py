@@ -216,7 +216,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
     def _get_default_hours(self) -> str:
         """Get default peak hours based on selected provider."""
         provider = self.config_data.get(CONF_PROVIDER, PROVIDER_CUSTOM)
-        return PROVIDER_DEFAULTS.get(provider, {}).get(
+        return PROVIDER_DEFAULTS.get(provider, {}).get(  # type: ignore
             CONF_HOURS_PEAK, DEFAULT_G12_PEAK_HOURS
         )
 
@@ -319,8 +319,9 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 return await self.async_step_energy_sensor()
 
         provider = self.config_data.get(CONF_PROVIDER)
-        defaults = PROVIDER_DEFAULTS.get(
-            PROVIDER_TAURON if provider == PROVIDER_TAURON else None, {}
+        defaults = PROVIDER_DEFAULTS.get(  # type: ignore
+            PROVIDER_TAURON if provider == PROVIDER_TAURON else None,
+            {},  # type: ignore
         ).get("g13", {"p1_s": "7-13", "p2_s": "19-22", "p1_w": "7-13", "p2_w": "16-21"})
 
         return self.async_show_form(
@@ -502,7 +503,7 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
         if mode == MODE_COMPARISON:
             tariffs_to_show = [MODE_G11, MODE_G12, MODE_G12W, MODE_G12N, MODE_G13]
         else:
-            tariffs_to_show = [mode]
+            tariffs_to_show = [mode]  # type: ignore
 
         for t in tariffs_to_show:
             if t == MODE_G11:

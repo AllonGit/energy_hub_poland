@@ -232,7 +232,9 @@ class RecommendationSensor(EnergyConsumerEntity):
         self._attr_translation_key = "recommendation"
         self._attr_unique_id = f"recommendation_{entry.entry_id}"
         # Store accumulated costs for each tariff
-        self._costs = {k: 0.0 for k in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]}
+        self._costs = dict.fromkeys(
+            ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
+        )
 
     async def async_added_to_hass(self) -> None:
         """Handle entity being added to HA - restore state and setup tracking."""
@@ -269,7 +271,7 @@ class RecommendationSensor(EnergyConsumerEntity):
     def _reset_state(self, now: datetime) -> None:
         """Reset accumulated costs on the 1st of each month."""
         if now.day == 1:
-            self._costs = {k: 0.0 for k in self._costs}
+            self._costs = dict.fromkeys(self._costs, 0.0)
             self.async_write_ha_state()
 
     def _process_energy_delta(self, delta: float) -> None:
@@ -320,7 +322,9 @@ class RecommendationSensor(EnergyConsumerEntity):
         }
         for k, v in self._costs.items():
             if k != "dynamic":
-                attrs[f"savings_{k}_vs_dynamic"] = round(dyn_cost - v, 2)
+                attrs[f"savings_{k}_vs_dynamic"] = round(
+                    dyn_cost - v, 2
+                )  # # type: ignore
         return attrs
 
 

@@ -132,8 +132,8 @@
     },
     "price_unit": {
       "options": {
-        "kWh": "PLN / kWh",
-        "MWh": "PLN / MWh"
+        "kwh": "PLN / kWh",
+        "mwh": "PLN / MWh"
       }
     },
     "provider": {
