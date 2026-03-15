@@ -46,6 +46,9 @@ MODE_COMPARISON = "comparison"
 UNIT_KWH = "kwh"
 UNIT_MWH = "mwh"
 
+# Compatibility with tests
+CONF_UNIT_TYPE = CONF_PRICE_UNIT
+
 # Energy Providers (used for pre-filling standard hours)
 PROVIDER_CUSTOM = "custom"
 PROVIDER_PGE = "pge"

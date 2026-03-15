@@ -2,19 +2,18 @@
 """Sensor platform for Energy Hub Poland."""
 
 import logging
-from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
+    SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import (
     async_track_state_change_event,
-    async_track_time_change,
 )
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
@@ -116,17 +115,22 @@ def setup_comparison_sensors(
     # Recommendation sensor requires an energy sensor to calculate historical costs
     if config.get(CONF_ENERGY_SENSOR):
         sensors.append(RecommendationSensor(coordinator, entry))
+        # Add individual cost sensors for each tariff
+        for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]:
+            sensors.append(TariffCostSensor(coordinator, entry, tariff))
+
     return sensors
 
 
-class EnergyHubEntity(EnergyHubBaseEntity, SensorEntity):
+class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
     """Base sensor entity for Energy Hub Poland."""
 
     def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
         """Initialize the sensor entity."""
         super().__init__(coordinator, entry)
-        self._config = {**entry.data, **entry.options}
-        self._price_unit = self._config.get(CONF_PRICE_UNIT)
+        self._price_unit = self._config.get(CONF_PRICE_UNIT) or self._config.get(
+            "unit_type", "kwh"
+        )
 
     @property
     def native_unit_of_measurement(self) -> str | None:
@@ -141,12 +145,13 @@ class EnergyHubEntity(EnergyHubBaseEntity, SensorEntity):
         """Convert price from PLN/kWh to PLN/MWh if necessary."""
         if value is None:
             return None
-        if self._price_unit == UNIT_MWH:
+        price_unit = getattr(self, "_price_unit", "kwh")
+        if price_unit == UNIT_MWH:
             return round(value * 1000, 2)
         return round(value, 4)
 
 
-class EnergyConsumerEntity(EnergyHubEntity, RestoreEntity):
+class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
     """Base class for entities that consume and process energy sensor readings."""
 
     def __init__(
@@ -199,8 +204,13 @@ class EnergyConsumerEntity(EnergyHubEntity, RestoreEntity):
         poland_tz = ZoneInfo("Europe/Warsaw")
         poland_now = now.astimezone(poland_tz)
 
+        if not self.coordinator.data:
+            return {}
+
+        today_prices = self.coordinator.data.get("today", {})
+
         return {
-            "dynamic": self.coordinator.data.get("today", {}).get(poland_now.hour),
+            "dynamic": today_prices.get(poland_now.hour),
             "g11": get_current_g11_price(self._config.get(CONF_G11_SETTINGS, {})),
             "g12": get_current_g12_price(
                 poland_now, self._config.get(CONF_G12_SETTINGS, {})
@@ -217,10 +227,66 @@ class EnergyConsumerEntity(EnergyHubEntity, RestoreEntity):
         }
 
 
+class TariffCostSensor(EnergyHubSensorEntity):
+    """Sensor representing the accumulated cost for a specific tariff."""
+
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.TOTAL
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        tariff: str,
+    ) -> None:
+        """Initialize the tariff cost sensor."""
+        super().__init__(coordinator, entry)
+        self._tariff = tariff
+        self._attr_translation_key = f"cost_{tariff}"
+        self._attr_unique_id = f"cost_{tariff}_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the accumulated cost from the recommendation sensor."""
+        costs = self.coordinator.data.get("costs", {})
+        return round(costs.get(self._tariff, 0.0), 2)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        last_reset = self.coordinator.data.get("last_reset")
+        return {
+            "last_reset": last_reset.isoformat() if last_reset else None,
+        }
+
+    async def async_added_to_hass(self) -> None:
+        """Handle entity being added to HA."""
+        await super().async_added_to_hass()
+
+        # Data migration: if coordinator cost for this tariff is zero, try to restore from this sensor's state
+        if self.coordinator.costs.get(self._tariff, 0) == 0:
+            if (last_state := await self.async_get_last_state()) is not None:
+                try:
+                    val = float(last_state.state)
+                    if val > 0:
+                        _LOGGER.info(
+                            "Migrating restored value %s for %s to coordinator",
+                            val,
+                            self._tariff,
+                        )
+                        self.coordinator.costs[self._tariff] = val
+                        # Update coordinator data with restored costs
+                        self.coordinator.data["costs"] = self.coordinator.costs
+                        self.coordinator.async_set_updated_data(self.coordinator.data)
+                except (ValueError, TypeError):
+                    pass
+
+
 class RecommendationSensor(EnergyConsumerEntity):
     """Sensor that recommends the cheapest tariff based on historical consumption."""
 
     _attr_device_class = SensorDeviceClass.ENUM
+    _attr_state_class = None
     _attr_icon = "mdi:lightbulb-auto"
     _attr_options = ["dynamiczna", "g11", "g12", "g12w", "g12n", "g13", "brak_danych"]
 
@@ -231,22 +297,10 @@ class RecommendationSensor(EnergyConsumerEntity):
         super().__init__(coordinator, entry)
         self._attr_translation_key = "recommendation"
         self._attr_unique_id = f"recommendation_{entry.entry_id}"
-        # Store accumulated costs for each tariff
-        self._costs = dict.fromkeys(
-            ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
-        )
 
     async def async_added_to_hass(self) -> None:
-        """Handle entity being added to HA - restore state and setup tracking."""
+        """Handle entity being added to HA - setup tracking."""
         await super().async_added_to_hass()
-
-        # Restore accumulated costs from previous state
-        if (last_state := await self.async_get_last_state()) is not None:
-            if "costs" in last_state.attributes:
-                saved_costs = last_state.attributes["costs"]
-                self._costs.update(
-                    {k: float(v) for k, v in saved_costs.items() if k in self._costs}
-                )
 
         # Initialize last reading from the energy sensor's current state
         if self._energy_sensor_id:
@@ -261,35 +315,20 @@ class RecommendationSensor(EnergyConsumerEntity):
                     self.hass, [self._energy_sensor_id], self._handle_energy_change
                 )
             )
-            self.async_on_remove(
-                async_track_time_change(
-                    self.hass, self._reset_state, hour=0, minute=0, second=5
-                )
-            )
-
-    @callback
-    def _reset_state(self, now: datetime) -> None:
-        """Reset accumulated costs on the 1st of each month."""
-        if now.day == 1:
-            self._costs = dict.fromkeys(self._costs, 0.0)
-            self.async_write_ha_state()
 
     def _process_energy_delta(self, delta: float) -> None:
-        """Apply energy delta to each tariff's accumulated cost."""
+        """Apply energy delta to each tariff's accumulated cost in the coordinator."""
         prices = self._get_tariff_prices()
-        for tariff, price in prices.items():
-            if price is not None:
-                self._costs[tariff] += delta * price
-
-        self.async_write_ha_state()
+        self.coordinator.async_update_costs(delta, prices)
 
     @property
     def native_value(self) -> str:
         """Determine and return the cheapest tariff."""
         try:
+            costs = self.coordinator.data.get("costs", {})
             # Prefer using accumulated costs for recommendation
-            if any(v > 0 for v in self._costs.values()):
-                cheapest = min(self._costs, key=lambda k: self._costs[k])
+            if any(v > 0 for v in costs.values()):
+                cheapest = min(costs, key=lambda k: costs[k])
                 return "dynamiczna" if cheapest == "dynamic" else cheapest
 
             # Fallback to current instantaneous prices
@@ -316,23 +355,25 @@ class RecommendationSensor(EnergyConsumerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Expose calculated costs and savings as attributes."""
-        dyn_cost = self._costs.get("dynamic", 0.0)
+        costs = self.coordinator.data.get("costs", {})
+        dyn_cost = costs.get("dynamic", 0.0)
         attrs = {
-            "costs": {k: round(v, 2) for k, v in self._costs.items()},
+            "costs": {k: round(v, 2) for k, v in costs.items()},
         }
-        for k, v in self._costs.items():
+        for k, v in costs.items():
             if k != "dynamic":
                 attrs[f"savings_{k}_vs_dynamic"] = round(
                     dyn_cost - v,
-                    2,  # type: ignore
+                    2,
                 )
         return attrs
 
 
-class CurrentPriceSensor(EnergyHubEntity):
+class CurrentPriceSensor(EnergyHubSensorEntity):
     """Sensor providing the current price for a specific tariff."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -393,10 +434,11 @@ class CurrentPriceSensor(EnergyHubEntity):
         return {}
 
 
-class MinMaxPriceSensor(EnergyHubEntity):
+class MinMaxPriceSensor(EnergyHubSensorEntity):
     """Sensor for the minimum or maximum energy price of the day (RCE)."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -423,11 +465,32 @@ class MinMaxPriceSensor(EnergyHubEntity):
         val = min(prices.values()) if self._mode == "min" else max(prices.values())
         return self._convert_price(val)
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose extra attributes for tests."""
+        if not self.coordinator.data:
+            return {"prices": {}}
+        prices = self.coordinator.data.get(self._day, {})
+        if not prices:
+            return {"prices": {}}
 
-class AveragePriceSensor(EnergyHubEntity):
+        val = min(prices.values()) if self._mode == "min" else max(prices.values())
+        matching_hours = [h for h, p in prices.items() if p == val]
+
+        attrs = {}
+        if len(matching_hours) == 1:
+            attrs["hour"] = f"{matching_hours[0]:02d}:00"
+        else:
+            attrs["hours"] = [f"{h:02d}:00" for h in matching_hours]
+
+        return attrs
+
+
+class AveragePriceSensor(EnergyHubSensorEntity):
     """Sensor for the average energy price of the day (RCE)."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -447,13 +510,24 @@ class AveragePriceSensor(EnergyHubEntity):
         if not self.coordinator.data:
             return None
         val = self.coordinator.data.get(f"{self._day}_avg")
+
+        # Compatibility with tests that don't pre-calculate avg in coordinator
+        if val is None:
+            prices = self.coordinator.data.get(self._day, {})
+            if prices:
+                val = sum(prices.values()) / len(prices)
+
+        if val is None:
+            return None
+
         return self._convert_price(val)
 
 
-class LowestPriceHourSensor(EnergyHubEntity):
+class LowestPriceHourSensor(EnergyHubSensorEntity):
     """Sensor for the hour with the lowest energy price (RCE)."""
 
     _attr_icon = "mdi:clock-outline"
+    _attr_state_class = None
 
     def __init__(
         self,
@@ -473,4 +547,15 @@ class LowestPriceHourSensor(EnergyHubEntity):
         if not self.coordinator.data:
             return None
         hour = self.coordinator.data.get(f"{self._day}_min_hour")
-        return f"{hour:02d}:00" if hour is not None else None
+
+        # Compatibility with tests
+        if hour is None:
+            prices = self.coordinator.data.get(self._day, {})
+            if prices:
+                min_price = min(prices.values())
+                hour = [h for h, p in prices.items() if p == min_price][0]
+
+        if hour is None:
+            return None
+
+        return f"{hour:02d}:00"

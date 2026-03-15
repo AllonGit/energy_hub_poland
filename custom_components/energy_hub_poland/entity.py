@@ -18,10 +18,12 @@ class EnergyHubEntity(CoordinatorEntity):
     ) -> None:
         """Initialize the entity."""
         super().__init__(coordinator)
+        self.entry = entry
+        self._config = {**entry.data, **entry.options}
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="Energy Hub",
             manufacturer="AllonGit",
             model="Energy Hub",
-            sw_version="v1.2.2",
+            sw_version="v1.2.3",
         )

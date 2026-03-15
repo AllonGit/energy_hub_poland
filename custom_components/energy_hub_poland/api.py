@@ -35,7 +35,10 @@ class EnergyHubApiClient:
         try:
             async with async_timeout.timeout(20):
                 response = await self._session.get(
-                    url, headers={"User-Agent": "Mozilla/5.0"}
+                    url,
+                    headers={
+                        "User-Agent": "HomeAssistant/EnergyHubPoland/1.2.2 (https://github.com/AllonGit/energy_hub_poland)"
+                    },
                 )
                 response.raise_for_status()
                 return await response.json()

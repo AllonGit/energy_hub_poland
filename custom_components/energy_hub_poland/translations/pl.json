@@ -171,7 +171,13 @@
       "max_price_tomorrow": { "name": "Maksymalna cena jutro" },
       "avg_price_tomorrow": { "name": "Średnia cena jutro" },
       "lowest_price_hour_today": { "name": "Godzina najniższej ceny dziś" },
-      "lowest_price_hour_tomorrow": { "name": "Godzina najniższej ceny jutro" }
+      "lowest_price_hour_tomorrow": { "name": "Godzina najniższej ceny jutro" },
+      "cost_dynamic": { "name": "Koszt - Dynamiczna" },
+      "cost_g11": { "name": "Koszt - G11" },
+      "cost_g12": { "name": "Koszt - G12" },
+      "cost_g12w": { "name": "Koszt - G12w" },
+      "cost_g12n": { "name": "Koszt - G12n" },
+      "cost_g13": { "name": "Koszt - G13" }
     },
     "binary_sensor": {
       "api_status": { "name": "Status połączenia API" },

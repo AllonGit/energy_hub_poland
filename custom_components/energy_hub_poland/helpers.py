@@ -1,5 +1,6 @@
 """Helper functions for Energy Hub Poland."""
 
+import functools
 import logging
 from datetime import datetime
 from typing import Any
@@ -10,6 +11,7 @@ _LOGGER = logging.getLogger(__package__)
 _POLISH_HOLIDAYS = holidays.PL()
 
 
+@functools.lru_cache(maxsize=32)
 def parse_hour_ranges(hour_ranges_str: str) -> list[tuple[int, int]]:
     """
     Parse a string of comma-separated hour ranges into a list of (start, end) tuples.
@@ -67,14 +69,10 @@ def get_current_g12_price(dt: datetime, settings: dict[str, Any]) -> float | Non
     Calculate current price for G12 tariff.
     Supports seasonal (Summer/Winter) peak hours if configured.
     """
-    summer_hours = settings.get("hours_peak_summer")
-    winter_hours = settings.get("hours_peak_winter")
-
-    if summer_hours and winter_hours:
-        hours_str = summer_hours if is_summer(dt) else winter_hours
+    if is_summer(dt):
+        hours_str = settings.get("hours_peak_summer") or settings.get("hours_peak", "")
     else:
-        # Fallback to standard peak hours if seasonal ones are missing
-        hours_str = settings.get("hours_peak", "")
+        hours_str = settings.get("hours_peak_winter") or settings.get("hours_peak", "")
 
     peak_hours = parse_hour_ranges(hours_str)
 
