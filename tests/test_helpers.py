@@ -1,6 +1,6 @@
 """Tests for custom_components/energy_hub_poland/helpers.py."""
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import holidays

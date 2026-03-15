@@ -1,14 +1,10 @@
 """Tests for sensor logic (price sensors, cost sensors, energy delta)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from custom_components.energy_hub_poland.const import (
-    CONF_G12_SETTINGS,
-    CONF_G12W_SETTINGS,
     CONF_PRICE_UNIT,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
