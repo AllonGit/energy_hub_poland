@@ -9,7 +9,7 @@
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 
 <p align="center">
-  <img src="brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="custom_components/energy_hub_poland/brands/dark_icon@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---
@@ -65,16 +65,6 @@ The integration's most powerful feature.
    * Select your default operation mode.
    * Input your energy meter entity (required for cost calculations).
    * Define peak hours (if using G12).
-
----
-
-## 🚀 New Sensors and Automations
-
-In version v1.2.1, we've introduced sensors to simplify home automation:
-
-* **Average Daily Price**: Compare the current price with the average price for today and tomorrow.
-* **Low Price Hour**: Schedule a dishwasher or laundry for a specific time.
-* **Price Jump (Binary Sensor)**: Automatically turns on when the price is **30% higher** than the daily average. Ideal for turning off energy-intensive devices (e.g., a boiler) during price peaks.
 
 ---
 
@@ -138,25 +128,25 @@ apex_config:
             color: "#fff"
             background: "#e74c3c"
 series:
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
     name: Aktualna
     color: "#03A9F4"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_minimalna_dzis
+  - entity: sensor.energy_hub_minimalna_cena_dzis
     name: Min Dziś
     color: "#00E676"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_maksymalna_dzis
+  - entity: sensor.energy_hub_maksymalna_cena_dzis
     name: Max Dziś
     color: "#FF1744"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_poland_energy_hub_poland_cena_dynamic
+  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
     name: Cena
     type: area
     show:
@@ -164,22 +154,28 @@ series:
     color_threshold:
       - value: 0
         color: "#2ecc71"
-      - value: 0.5
+      - value: 0.4
         color: "#f39c12"
       - value: 0.7
         color: "#e74c3c"
     data_generator: |
-      if (!entity.attributes.today_prices) return [];
       const data = [];
+      const today = entity.attributes.today_prices;
+      const tomorrow = entity.attributes.tomorrow_prices;
       const startTs = new Date().setHours(0, 0, 0, 0);
-      for (const [h, p] of Object.entries(entity.attributes.today_prices)) {
-        data.push([startTs + (parseInt(h) * 3600000), p]);
+
+      if (today) {
+        Object.entries(today).forEach(([hour, price]) => {
+          data.push([startTs + (parseInt(hour) * 3600000), price]);
+        });
       }
-      const tom = entity.attributes.tomorrow_prices || {};
-      for (const [h, p] of Object.entries(tom)) {
-        data.push([startTs + 86400000 + (parseInt(h) * 3600000), p]);
+
+      if (tomorrow && Object.keys(tomorrow).length > 0) {
+        Object.entries(tomorrow).forEach(([hour, price]) => {
+          data.push([startTs + 86400000 + (parseInt(hour) * 3600000), price]);
+        });
       }
-      return data;
+      return data.sort((a, b) => a[0] - b[0]);
 ```
 
 ### ⚡ Energy Dashboard Integration

@@ -12,7 +12,7 @@
 **For the English version click [here](README_EN.md)**
 
 <p align="center">
-  <img src="brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="custom_components/energy_hub_poland/brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---
@@ -66,14 +66,9 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-## 🆕 Co nowego (Wersja 1.2.2)
+## 🆕 Co nowego (Wersja 1.2.3)
 
-**Precyzyjne ceny dynamiczne**: Dzięki dogłębnej analizie API PGE DataHub, ceny są teraz idealnie zsynchronizowane z czasem lokalnym w Polsce (Europe/Warsaw)
-
-**Moduł porównywania taryf**: Teraz możesz w czasie rzeczywistym porównywać cenę dynamiczną RCE ze swoją obecną taryfą (G11, G12, G12w, G12n, G13).
-**Zastosowanie**: Ułatwia podjęcie decyzji o przejściu na rozliczenia dynamiczne oraz optymalizację kosztów energii.
-
-**Pełna zgodność z ApexCharts**: Atrybuty today_prices oraz tomorrow_prices są teraz generowane z poprawnymi timestampami, co pozwala na budowanie idealnych wykresów prognoz.
+**NAprawa drobnych błędów**
 
 ---
 
@@ -153,13 +148,13 @@ series:
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
+  - entity: sensor.energy_hub_maksymalna_cena_dzis
     name: Max Dziś
     color: "#FF1744"
     show:
       in_header: true
       in_chart: false
-  - entity: sensor.energy_hub_maksymalna_cena_dzis
+  - entity: sensor.energy_hub_aktualna_cena_dynamiczna
     name: Cena
     type: area
     show:
@@ -167,22 +162,28 @@ series:
     color_threshold:
       - value: 0
         color: "#2ecc71"
-      - value: 0.5
+      - value: 0.4
         color: "#f39c12"
       - value: 0.7
         color: "#e74c3c"
     data_generator: |
-      if (!entity.attributes.today_prices) return [];
       const data = [];
+      const today = entity.attributes.today_prices;
+      const tomorrow = entity.attributes.tomorrow_prices;
       const startTs = new Date().setHours(0, 0, 0, 0);
-      for (const [h, p] of Object.entries(entity.attributes.today_prices)) {
-        data.push([startTs + (parseInt(h) * 3600000), p]);
+
+      if (today) {
+        Object.entries(today).forEach(([hour, price]) => {
+          data.push([startTs + (parseInt(hour) * 3600000), price]);
+        });
       }
-      const tom = entity.attributes.tomorrow_prices || {};
-      for (const [h, p] of Object.entries(tom)) {
-        data.push([startTs + 86400000 + (parseInt(h) * 3600000), p]);
+
+      if (tomorrow && Object.keys(tomorrow).length > 0) {
+        Object.entries(tomorrow).forEach(([hour, price]) => {
+          data.push([startTs + 86400000 + (parseInt(hour) * 3600000), price]);
+        });
       }
-      return data;
+      return data.sort((a, b) => a[0] - b[0]);
 ```
 
 ## ⚡ Integracja z Panelem Energia
@@ -196,18 +197,6 @@ Aby Home Assistant poprawnie liczył koszty w oficjalnym panelu Energia:
 
 4. Zapisz zmiany.
 
-<details>
-<summary>🗺️ Roadmap</summary>
-
-🟢 Wersja 1.2.2 (W przygotowaniu)
-Obsługa Taryfy G11: Dodanie podstawowej taryfy jednostrefowej do Trybu Porównawczego.
-
-🟡 Wersja 1.3.0
-Oficjalne API PSE: Pełne przejście na nowe źródła danych Polskich Sieci Elektroenergetycznych.
-
-Wybór Operatora: Automatyczne doliczanie stawek dystrybucyjnych dla największych OSD (PGE, Tauron, Enea).
-
-</details>
 
 ## 📖 Dokumentacja i Pomoc
 Więcej szczegółów znajdziesz w dokumentacji:
