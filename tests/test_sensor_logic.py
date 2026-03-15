@@ -255,5 +255,3 @@ class TestGetEnergyDelta:
         delta = entity._get_energy_delta(0.0)
         # current < last → energy_delta = current = 0.0
         assert delta == 0.0
-
-

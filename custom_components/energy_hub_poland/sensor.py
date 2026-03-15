@@ -481,7 +481,7 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
         if len(matching_hours) == 1:
             attrs["hour"] = f"{matching_hours[0]:02d}:00"
         else:
-            attrs["hours"] = [f"{h:02d}:00" for h in matching_hours]
+            attrs["hours"] = [f"{h:02d}:00" for h in matching_hours]  # type: ignore[assignment]
 
         return attrs
 

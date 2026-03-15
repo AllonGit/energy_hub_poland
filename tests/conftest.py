@@ -11,25 +11,32 @@ def _identity_decorator(*args, **kwargs):
         return args[0]
     return lambda f: f
 
+
 class _StubCoordinatorEntity:
     def __init__(self, coordinator=None):
         self.coordinator = coordinator
 
+
 class _StubSensorEntity:
     pass
 
+
 class _StubBinarySensorEntity:
     pass
+
 
 class _StubRestoreEntity:
     async def async_get_last_state(self):
         return None
 
+
 class _StubConfigFlow:
     pass
 
+
 class _StubOptionsFlow:
     pass
+
 
 ha_mod = MagicMock()
 sys.modules.setdefault("homeassistant", ha_mod)
@@ -94,6 +101,7 @@ sys.modules.setdefault("homeassistant.helpers.entity_registry", MagicMock())
 sys.modules.setdefault("homeassistant.helpers.selector", MagicMock())
 sys.modules.setdefault("homeassistant.helpers.storage", MagicMock())
 
+
 def parse_datetime(dt_str):
     if not isinstance(dt_str, str):
         return None
@@ -104,6 +112,7 @@ def parse_datetime(dt_str):
         return res
     except ValueError:
         return None
+
 
 ha_dt_util = MagicMock()
 ha_dt_util.parse_datetime = parse_datetime
@@ -131,13 +140,16 @@ from .common import (  # noqa: E402, I001
     SAMPLE_PRICES_TOMORROW,
 )
 
+
 @pytest.fixture
 def sample_prices_today():
     return dict(SAMPLE_PRICES_TODAY)
 
+
 @pytest.fixture
 def sample_prices_tomorrow():
     return dict(SAMPLE_PRICES_TOMORROW)
+
 
 @pytest.fixture
 def coordinator_data(sample_prices_today, sample_prices_tomorrow):
@@ -145,6 +157,7 @@ def coordinator_data(sample_prices_today, sample_prices_tomorrow):
         "today": sample_prices_today,
         "tomorrow": sample_prices_tomorrow,
     }
+
 
 @pytest.fixture
 def mock_entry():
@@ -155,6 +168,7 @@ def mock_entry():
         title="Energy Hub",
     )
 
+
 @pytest.fixture
 def mock_coordinator(coordinator_data):
     coord = MagicMock()
@@ -162,17 +176,21 @@ def mock_coordinator(coordinator_data):
     coord.api_connected = True
     return coord
 
+
 @pytest.fixture
 def winter_weekday():
     return datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
+
 
 @pytest.fixture
 def summer_weekday():
     return datetime(2025, 7, 16, 10, 0, 0, tzinfo=CEST)
 
+
 @pytest.fixture
 def saturday():
     return datetime(2025, 1, 18, 10, 0, 0, tzinfo=CET)
+
 
 @pytest.fixture
 def polish_holiday():
