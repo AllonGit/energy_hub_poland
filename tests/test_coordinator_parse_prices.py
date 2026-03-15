@@ -7,10 +7,10 @@ from zoneinfo import ZoneInfo
 
 from custom_components.energy_hub_poland import coordinator as coord_module
 from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
-from tests.common import ENTRY_ID, make_raw_api_data
+from tests.common import ENTRY_ID, make_raw_api_data, WARSAW as COMMON_WARSAW
 
 # The coordinator uses dt_util.DEFAULT_TIME_ZONE — patch it to a real tz
-WARSAW = ZoneInfo("Europe/Warsaw")
+WARSAW = COMMON_WARSAW
 
 
 def _make_coordinator():

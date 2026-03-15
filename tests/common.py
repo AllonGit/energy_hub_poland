@@ -1,11 +1,13 @@
 """Shared test constants and helpers."""
 
 from datetime import date, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 ENTRY_ID = "test_entry_123"
 
 CET = timezone(timedelta(hours=1))
 CEST = timezone(timedelta(hours=2))
+WARSAW = ZoneInfo("Europe/Warsaw")
 
 # Sample 24-hour price data (PLN/kWh after /1000 conversion)
 SAMPLE_PRICES_TODAY = {h: round(0.30 + h * 0.02, 4) for h in range(24)}

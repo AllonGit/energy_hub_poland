@@ -77,6 +77,9 @@ ha_core.callback = _identity_decorator
 ha_core.HomeAssistant = MagicMock
 sys.modules.setdefault("homeassistant.core", ha_core)
 
+import homeassistant.core
+homeassistant.core.callback = _identity_decorator
+
 # homeassistant.config_entries
 ha_ce = MagicMock()
 ha_ce.ConfigFlow = _StubConfigFlow
@@ -135,10 +138,30 @@ sys.modules.setdefault("homeassistant.helpers.selector", MagicMock())
 sys.modules.setdefault("homeassistant.helpers.storage", MagicMock())
 
 # homeassistant.util and homeassistant.util.dt
-ha_util = MagicMock()
-sys.modules.setdefault("homeassistant.util", ha_util)
+from datetime import UTC, datetime
+
+
+def parse_datetime(dt_str):
+    if not isinstance(dt_str, str):
+        return None
+    try:
+        res = datetime.fromisoformat(dt_str.replace(" ", "T"))
+        if res.tzinfo is None:
+            res = res.replace(tzinfo=UTC)
+        return res
+    except ValueError:
+        return None
+
 
 ha_dt_util = MagicMock()
+ha_dt_util.parse_datetime = parse_datetime
+ha_dt_util.UTC = UTC
+ha_dt_util.now = datetime.now
+ha_dt_util.utcnow = lambda: datetime.now(UTC)
+
+ha_util = MagicMock()
+ha_util.dt = ha_dt_util
+sys.modules.setdefault("homeassistant.util", ha_util)
 sys.modules.setdefault("homeassistant.util.dt", ha_dt_util)
 
 # voluptuous (used in config_flow)

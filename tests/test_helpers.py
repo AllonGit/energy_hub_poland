@@ -6,12 +6,10 @@ from zoneinfo import ZoneInfo
 import holidays
 
 from custom_components.energy_hub_poland.helpers import (
-    calculate_tariff_price,
     get_current_g12_price,
     get_current_g12w_price,
-    get_seasonal_peak_hours_str,
     is_peak_time,
-    is_summer_time,
+    is_summer,
     parse_hour_ranges,
 )
 
@@ -24,29 +22,16 @@ WARSAW = ZoneInfo("Europe/Warsaw")
 # ============================================================
 
 
-class TestIsSummerTime:
-    def test_summer_dst_active(self):
-        # July in Warsaw → CEST (UTC+2), dst() returns timedelta(hours=1)
+class TestIsSummer:
+    def test_summer_months(self):
+        # July in Warsaw
         dt = datetime(2025, 7, 15, 12, 0, 0, tzinfo=WARSAW)
-        assert is_summer_time(dt) is True
+        assert is_summer(dt) is True
 
-    def test_winter_no_dst(self):
-        # January in Warsaw → CET (UTC+1), dst() returns timedelta(0)
+    def test_winter_months(self):
+        # January in Warsaw
         dt = datetime(2025, 1, 15, 12, 0, 0, tzinfo=WARSAW)
-        assert is_summer_time(dt) is False
-
-    def test_naive_datetime_returns_false(self):
-        dt = datetime(2025, 7, 15, 12, 0, 0)
-        assert is_summer_time(dt) is False
-
-    def test_utc_returns_false(self):
-        dt = datetime(2025, 7, 15, 12, 0, 0, tzinfo=UTC)
-        assert is_summer_time(dt) is False
-
-    def test_fixed_offset_returns_false(self):
-        # Fixed offsets always return dst()=timedelta(0) even if offset=+2
-        dt = datetime(2025, 7, 15, 12, 0, 0, tzinfo=timezone(timedelta(hours=2)))
-        assert is_summer_time(dt) is False
+        assert is_summer(dt) is False
 
 
 # ============================================================
@@ -121,61 +106,6 @@ class TestIsPeakTime:
 # ============================================================
 
 
-class TestGetSeasonalPeakHoursStr:
-    def test_summer_uses_summer_key(self):
-        dt = datetime(2025, 7, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {
-            "hours_peak_summer": "8-11,15-22",
-            "hours_peak_winter": "8-11,13-21",
-        }
-        assert get_seasonal_peak_hours_str(dt, settings) == "8-11,15-22"
-
-    def test_winter_uses_winter_key(self):
-        dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {
-            "hours_peak_summer": "8-11,15-22",
-            "hours_peak_winter": "8-11,13-21",
-        }
-        assert get_seasonal_peak_hours_str(dt, settings) == "8-11,13-21"
-
-    def test_fallback_to_hours_peak(self):
-        dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {"hours_peak": "6-22"}
-        assert get_seasonal_peak_hours_str(dt, settings) == "6-22"
-
-    def test_empty_settings(self):
-        dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        assert get_seasonal_peak_hours_str(dt, {}) == ""
-
-
-# ============================================================
-# calculate_tariff_price
-# ============================================================
-
-
-class TestCalculateTariffPrice:
-    def test_peak_hour_returns_peak_price(self):
-        dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {
-            "hours_peak_winter": "8-14",
-            "price_peak": 0.80,
-            "price_offpeak": 0.50,
-        }
-        assert calculate_tariff_price(dt, settings) == 0.80
-
-    def test_offpeak_hour_returns_offpeak_price(self):
-        dt = datetime(2025, 1, 15, 22, 0, 0, tzinfo=WARSAW)
-        settings = {
-            "hours_peak_winter": "8-14",
-            "price_peak": 0.80,
-            "price_offpeak": 0.50,
-        }
-        assert calculate_tariff_price(dt, settings) == 0.50
-
-    def test_missing_price_keys_defaults_to_zero(self):
-        dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
-        settings = {"hours_peak_winter": "8-14"}
-        assert calculate_tariff_price(dt, settings) == 0.0
 
 
 # ============================================================
@@ -184,7 +114,7 @@ class TestCalculateTariffPrice:
 
 
 class TestGetCurrentG12Price:
-    def test_delegates_to_calculate_tariff_price(self):
+    def test_peak_hour_returns_peak_price(self):
         dt = datetime(2025, 1, 15, 10, 0, 0, tzinfo=WARSAW)
         settings = {
             "hours_peak_winter": "8-14",
@@ -192,6 +122,15 @@ class TestGetCurrentG12Price:
             "price_offpeak": 0.50,
         }
         assert get_current_g12_price(dt, settings) == 0.80
+
+    def test_offpeak_hour_returns_offpeak_price(self):
+        dt = datetime(2025, 1, 15, 22, 0, 0, tzinfo=WARSAW)
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        assert get_current_g12_price(dt, settings) == 0.50
 
 
 # ============================================================

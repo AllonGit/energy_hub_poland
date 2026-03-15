@@ -23,6 +23,7 @@ def _make_coordinator(
 ):
     """Create a coordinator with controllable internal state."""
     coord = EnergyHubDataCoordinator.__new__(EnergyHubDataCoordinator)
+    coord.hass = MagicMock()
     coord.config_entry = SimpleNamespace(entry_id=ENTRY_ID, data={}, options={})
     coord.api_client = MagicMock()
     coord.store = AsyncMock()
@@ -35,6 +36,10 @@ def _make_coordinator(
     }
     coord.last_update_time = None
     coord.api_connected = True
+    coord.costs = dict.fromkeys(["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0)
+    coord.last_reset = datetime(2025, 1, 1, tzinfo=UTC)
+    coord._error_count = 0
+    coord._scheduled_update_remover = None
     return coord
 
 
