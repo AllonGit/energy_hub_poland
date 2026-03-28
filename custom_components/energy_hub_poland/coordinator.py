@@ -103,9 +103,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         pse_prices = self._parse_pse_prices(rce_data, forecast_data)
 
         # Update today
-        today_prices = {
-            h: pse_prices.get((today_date, h)) for h in range(24)
-        }
+        today_prices = {h: pse_prices.get((today_date, h)) for h in range(24)}
         # If missing some hours, try PGE fallback
         if None in today_prices.values():
             pge_prices = await self._fetch_pge_prices(today_date)
@@ -122,9 +120,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
         # Update tomorrow
         tomorrow_date = today_date + timedelta(days=1)
-        tomorrow_prices = {
-            h: pse_prices.get((tomorrow_date, h)) for h in range(24)
-        }
+        tomorrow_prices = {h: pse_prices.get((tomorrow_date, h)) for h in range(24)}
         if None in tomorrow_prices.values():
             pge_prices = await self._fetch_pge_prices(tomorrow_date)
             if pge_prices:
@@ -228,10 +224,15 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         last_price_update = self._internal_data.get("last_price_update")
         needs_price_update = False
 
-        if not self._internal_data.get("today") or self._internal_data.get("today_date") != today_date:
+        if (
+            not self._internal_data.get("today")
+            or self._internal_data.get("today_date") != today_date
+        ):
             needs_price_update = True
         elif poland_now.hour >= 12 and (
-            not self._internal_data.get("tomorrow") or self._internal_data.get("tomorrow_date") != (today_date + timedelta(days=1))
+            not self._internal_data.get("tomorrow")
+            or self._internal_data.get("tomorrow_date")
+            != (today_date + timedelta(days=1))
         ):
             needs_price_update = True
         elif last_price_update:

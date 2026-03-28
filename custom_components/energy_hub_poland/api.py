@@ -10,6 +10,7 @@ from .const import API_URL, PSE_API_URL
 
 _LOGGER = logging.getLogger(__package__)
 
+
 # TODO: API behavior monitoring
 class PSEApiClient:
     """API client from PSE."""
@@ -43,7 +44,9 @@ class PSEApiClient:
                 data = await response.json()
                 return data.get("value", [])
         except Exception as e:
-            _LOGGER.error("Error fetching %s from PSE for %s: %s", endpoint, date_str, e)
+            _LOGGER.error(
+                "Error fetching %s from PSE for %s: %s", endpoint, date_str, e
+            )
             return None
 
     async def get_rce_prices(self, for_date: date) -> list[dict[str, Any]] | None:
@@ -102,9 +105,7 @@ class EnergyHubApiClient:
             async with async_timeout.timeout(20):
                 response = await self._session.get(
                     url,
-                    headers={
-                        "User-Agent": "HomeAssistant/EnergyHubPoland"
-                    },
+                    headers={"User-Agent": "HomeAssistant/EnergyHubPoland"},
                 )
                 response.raise_for_status()
                 return await response.json()

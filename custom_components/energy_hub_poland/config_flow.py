@@ -320,7 +320,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
 
         provider = self.config_data.get(CONF_PROVIDER)
         defaults = PROVIDER_DEFAULTS.get(  # type: ignore
-            PROVIDER_TAURON if provider == PROVIDER_TAURON else None,
+            PROVIDER_TAURON if provider == PROVIDER_TAURON else None, #type: ignore
             {},  # type: ignore
         ).get("g13", {"p1_s": "7-13", "p2_s": "19-22", "p1_w": "7-13", "p2_w": "16-21"})
 
