@@ -66,10 +66,16 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-## 🆕 Co nowego (Wersja 1.2.3)
+### 🆕 Co nowego (Wersja 1.3.0)
+**Oficjalne API PSE:** Głównym źródłem danych stały się teraz bezpośrednie raporty Polskich Sieci Elektroenergetycznych (raporty.pse.pl).
 
-**NAprawa drobnych błędów**
+**Logika "Najtańszego Kwadransa":** PSE publikuje ceny RCE w interwałach 15-minutowych. Integracja automatycznie analizuje wszystkie kwadranse w danej godzinie i wybiera z nich najniższą stawkę, co najczęściej odpowiada notowaniom Fixing 1.
+Nowe Sensory Systemu KSE:
 
+**KSE Zapotrzebowanie:** Monitoruj w czasie rzeczywistym aktualne i prognozowane obciążenie krajowego systemu elektroenergetycznego (w MW).
+**KSE Generacja OZE:** Śledź produkcję energii z Farm Wiatrowych oraz Fotowoltaiki (PV) w skali całego kraju.
+**Inteligentny Fallback (PGE Datahub):** W przypadku awarii serwerów PSE, integracja automatycznie przełącza się na zapasowe źródło (PGE DataHub), zapewniając ciągłość odczytów cen rynkowych (RCE).
+**Optymalizacja Wydajności:** Rozdzielono częstotliwość odświeżania: ceny aktualizowane są dwa razy dziennie, natomiast dane o obciążeniu i generacji co 5 minut, co minimalizuje obciążenie procesora i sieci.
 ---
 
 ## 💡 Przykłady Użycia
