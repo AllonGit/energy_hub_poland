@@ -480,7 +480,7 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ] = vol.All(vol.Coerce(int), vol.Range(min=1, max=500))
 
-        # Energy sensor settings only for Comparison mode
+        # Energy sensor settings only for comparison mode
         if mode == MODE_COMPARISON:
             schema[
                 vol.Optional(CONF_ENERGY_SENSOR, default=config.get(CONF_ENERGY_SENSOR))

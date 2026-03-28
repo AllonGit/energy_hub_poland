@@ -64,6 +64,7 @@ async def async_setup_entry(
 
     if mode == MODE_DYNAMIC:
         sensors.extend(setup_dynamic_sensors(coordinator, entry))
+        sensors.extend(setup_pse_sensors(coordinator, entry))
     elif mode == MODE_G12:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12", config))
     elif mode == MODE_G12W:
@@ -84,10 +85,22 @@ def setup_dynamic_sensors(
         MinMaxPriceSensor(coordinator, entry, "today", "max"),
         AveragePriceSensor(coordinator, entry, "today"),
         LowestPriceHourSensor(coordinator, entry, "today"),
+        HighestPriceHourSensor(coordinator, entry, "today"),
         MinMaxPriceSensor(coordinator, entry, "tomorrow", "min"),
         MinMaxPriceSensor(coordinator, entry, "tomorrow", "max"),
         AveragePriceSensor(coordinator, entry, "tomorrow"),
         LowestPriceHourSensor(coordinator, entry, "tomorrow"),
+        HighestPriceHourSensor(coordinator, entry, "tomorrow"),
+    ]
+
+
+def setup_pse_sensors(
+    coordinator: EnergyHubDataCoordinator, entry: ConfigEntry
+) -> list[SensorEntity]:
+    """Set up additional PSE-specific sensors."""
+    return [
+        KSELoadSensor(coordinator, entry),
+        KSEGenerationSensor(coordinator, entry),
     ]
 
 
@@ -263,8 +276,9 @@ class TariffCostSensor(EnergyHubSensorEntity):
         """Handle entity being added to HA."""
         await super().async_added_to_hass()
 
-        # Data migration: if coordinator cost for this tariff is zero, try to restore from this sensor's state
-        if self.coordinator.costs.get(self._tariff, 0) == 0:
+        # Data migration: if coordinator costs are zero, try to restore from this sensor's state
+        costs = self.coordinator.costs
+        if all(v == 0 for v in costs.values()):
             if (last_state := await self.async_get_last_state()) is not None:
                 try:
                     val = float(last_state.state)
@@ -275,8 +289,6 @@ class TariffCostSensor(EnergyHubSensorEntity):
                             self._tariff,
                         )
                         self.coordinator.costs[self._tariff] = val
-                        # Update coordinator data with restored costs
-                        self.coordinator.data["costs"] = self.coordinator.costs
                         self.coordinator.async_set_updated_data(self.coordinator.data)
                 except (ValueError, TypeError):
                     pass
@@ -481,7 +493,7 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
         if len(matching_hours) == 1:
             attrs["hour"] = f"{matching_hours[0]:02d}:00"
         else:
-            attrs["hours"] = [f"{h:02d}:00" for h in matching_hours]  # type: ignore[assignment]
+            attrs["hours"] = [f"{h:02d}:00" for h in matching_hours]
 
         return attrs
 
@@ -555,7 +567,106 @@ class LowestPriceHourSensor(EnergyHubSensorEntity):
                 min_price = min(prices.values())
                 hour = [h for h, p in prices.items() if p == min_price][0]
 
-        if hour is None:
-            return None
+        return f"{hour:02d}:00" if hour is not None else None
 
-        return f"{hour:02d}:00"
+
+class HighestPriceHourSensor(EnergyHubSensorEntity):
+    """Sensor for the hour with the highest energy price (RCE)."""
+
+    _attr_icon = "mdi:clock-alert-outline"
+    _attr_state_class = None
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        day: str,
+    ) -> None:
+        """Initialize the highest price hour sensor."""
+        super().__init__(coordinator, entry)
+        self._day = day
+        self._attr_translation_key = f"highest_price_hour_{day}"
+        self._attr_unique_id = f"highest_price_hour_{day}_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the formatted hour string (e.g. '19:00')."""
+        if not self.coordinator.data:
+            return None
+        hour = self.coordinator.data.get(f"{self._day}_max_hour")
+        return f"{hour:02d}:00" if hour is not None else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return price for this hour as an attribute."""
+        if not self.coordinator.data:
+            return {}
+        price = self.coordinator.data.get(f"{self._day}_max_price")
+        return {"price": self._convert_price(price)}
+
+
+class KSELoadSensor(EnergyHubSensorEntity):
+    """Sensor for KSE energy load (zapotrzebowanie)."""
+
+    _attr_icon = "mdi:transmission-tower"
+    _attr_native_unit_of_measurement = "MW"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the load sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "kse_load"
+        self._attr_unique_id = f"kse_load_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the actual load."""
+        return self.coordinator.data.get("load_actual")
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return forecast and imbalance energy as attributes."""
+        return {
+            "load_forecast": self.coordinator.data.get("load_fcst"),
+            "imbalance_energy": self.coordinator.data.get("imb_energy"),
+        }
+
+
+class KSEGenerationSensor(EnergyHubSensorEntity):
+    """Sensor for KSE energy generation (OZE)."""
+
+    _attr_icon = "mdi:solar-power-variant"
+    _attr_native_unit_of_measurement = "MW"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the generation sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "kse_generation"
+        self._attr_unique_id = f"kse_generation_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the sum of wind and PV generation."""
+        wi = self.coordinator.data.get("gen_wi") or 0.0
+        fv = self.coordinator.data.get("gen_fv") or 0.0
+        return round(wi + fv, 2)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return detailed generation data as attributes."""
+        return {
+            "wind_generation": self.coordinator.data.get("gen_wi"),
+            "pv_generation": self.coordinator.data.get("gen_fv"),
+            "power_demand_kse": self.coordinator.data.get("kse_pow_dem"),
+        }

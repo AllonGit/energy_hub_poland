@@ -7,12 +7,11 @@ from zoneinfo import ZoneInfo
 
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_point_in_time
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
-from .api import EnergyHubApiClient
+from .api import EnergyHubApiClient, PSEApiClient
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__package__)
@@ -29,7 +28,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
     def __init__(self, hass: HomeAssistant) -> None:
         """Initialize the coordinator."""
-        self._scheduled_update_remover = None
         super().__init__(
             hass,
             _LOGGER,
@@ -37,6 +35,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(minutes=5),
         )
         self.api_client = EnergyHubApiClient(async_get_clientsession(hass))
+        self.pse_client = PSEApiClient(async_get_clientsession(hass))
         self.store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._cache_loaded = False
 
@@ -45,6 +44,13 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             "today_date": None,
             "tomorrow": None,
             "tomorrow_date": None,
+            "last_price_update": None,
+            "load_actual": None,
+            "load_fcst": None,
+            "gen_wi": None,
+            "gen_fv": None,
+            "kse_pow_dem": None,
+            "imb_energy": None,
         }
         self.last_update_time: datetime | None = None
         self.api_connected: bool = True
@@ -56,45 +62,129 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
 
-    async def _fetch_data(self, fetch_date: date) -> dict[int, float] | None:
-        """Fetch and parse price data for a specific date."""
-        # Fix_1 prices for 'fetch_date' are published on the previous day.
+    async def _fetch_pge_prices(self, fetch_date: date) -> dict[int, float] | None:
+        """Fetch and parse price data from PGE DataHub (fallback)."""
         api_query_date = fetch_date - timedelta(days=1)
         _LOGGER.debug(
-            "Fetching prices for %s (API query date: %s)", fetch_date, api_query_date
+            "Fetching prices from PGE for %s (API query date: %s)",
+            fetch_date,
+            api_query_date,
         )
 
         raw_data = await self.api_client.async_get_prices(api_query_date)
-        parsed_prices = self._parse_prices(raw_data)
+        return self._parse_prices(raw_data)
 
-        if parsed_prices:
-            self.last_update_time = dt_util.utcnow()
-            return parsed_prices
+    async def _update_pse_frequent_data(self, today_date: date) -> None:
+        """Fetch frequent data (Load, Generation) from PSE."""
+        load_data = await self.pse_client.get_load_data(today_date)
+        gen_data = await self.pse_client.get_generation_plans(today_date)
+        forecast_data = await self.pse_client.get_rce_forecast(today_date)
 
-        return None
+        if load_data:
+            latest = load_data[-1]
+            self._internal_data["load_actual"] = latest.get("load_actual")
+            self._internal_data["load_fcst"] = latest.get("load_fcst")
 
-    @callback
-    def _schedule_hour_update(self) -> None:
-        """Schedule an update at the beginning of the next hour."""
-        if self._scheduled_update_remover:
-            self._scheduled_update_remover()
-            self._scheduled_update_remover = None
+        if gen_data:
+            latest = gen_data[-1]
+            self._internal_data["gen_wi"] = latest.get("gen_wi")
+            self._internal_data["gen_fv"] = latest.get("gen_fv")
+            self._internal_data["kse_pow_dem"] = latest.get("kse_pow_dem")
 
-        now = dt_util.now()
-        next_hour = (now + timedelta(hours=1)).replace(
-            minute=0, second=1, microsecond=0
-        )
+        if forecast_data:
+            latest = forecast_data[-1]
+            self._internal_data["imb_energy"] = latest.get("imb_energy")
 
-        _LOGGER.debug("Scheduling next hour update at %s", next_hour)
+    async def _update_pse_prices(self, today_date: date) -> None:
+        """Fetch and process RCE prices from PSE with PGE fallback."""
+        rce_data = await self.pse_client.get_rce_prices(today_date)
+        forecast_data = await self.pse_client.get_rce_forecast(today_date)
 
-        @callback
-        def _handle_scheduled_update(_: Any) -> None:
-            self._scheduled_update_remover = None
-            self.hass.async_create_task(self.async_refresh())
+        pse_prices = self._parse_pse_prices(rce_data, forecast_data)
 
-        self._scheduled_update_remover = async_track_point_in_time(
-            self.hass, _handle_scheduled_update, next_hour
-        )
+        # Update today
+        today_prices = {
+            h: pse_prices.get((today_date, h)) for h in range(24)
+        }
+        # If missing some hours, try PGE fallback
+        if None in today_prices.values():
+            pge_prices = await self._fetch_pge_prices(today_date)
+            if pge_prices:
+                for h in range(24):
+                    if today_prices[h] is None:
+                        today_prices[h] = pge_prices.get(h)
+
+        if any(v is not None for v in today_prices.values()):
+            self._internal_data["today"] = {
+                h: v for h, v in today_prices.items() if v is not None
+            }
+            self._internal_data["today_date"] = today_date
+
+        # Update tomorrow
+        tomorrow_date = today_date + timedelta(days=1)
+        tomorrow_prices = {
+            h: pse_prices.get((tomorrow_date, h)) for h in range(24)
+        }
+        if None in tomorrow_prices.values():
+            pge_prices = await self._fetch_pge_prices(tomorrow_date)
+            if pge_prices:
+                for h in range(24):
+                    if tomorrow_prices[h] is None:
+                        tomorrow_prices[h] = pge_prices.get(h)
+
+        if any(v is not None for v in tomorrow_prices.values()):
+            self._internal_data["tomorrow"] = {
+                h: v for h, v in tomorrow_prices.items() if v is not None
+            }
+            self._internal_data["tomorrow_date"] = tomorrow_date
+
+    def _parse_pse_prices(
+        self, rce_data: list | None, forecast_data: list | None
+    ) -> dict[tuple[date, int], float]:
+        """Parse PSE RCE and Forecast data, picking the minimum per hour."""
+        hourly_actuals: dict[tuple[date, int], list[float]] = {}
+        hourly_forecasts: dict[tuple[date, int], list[float]] = {}
+
+        def add_to_raw(dt_str: str, val: Any, target_dict: dict) -> None:
+            if val is None:
+                return
+            dt = dt_util.parse_datetime(dt_str)
+            if not dt:
+                return
+            # Polish time adjust: 00:15-01:00 is hour 0
+            hour = dt.hour
+            d_date = dt.date()
+            if dt.minute == 0 and dt.second == 0:
+                hour -= 1
+            if hour < 0:
+                hour = 23
+                d_date -= timedelta(days=1)
+            key = (d_date, hour)
+            if key not in target_dict:
+                target_dict[key] = []
+            target_dict[key].append(float(val) / 1000)
+
+        if forecast_data:
+            for item in forecast_data:
+                add_to_raw(item["dtime"], item.get("cen_fcst"), hourly_forecasts)
+
+        if rce_data:
+            for item in rce_data:
+                add_to_raw(item["dtime"], item.get("rce_pln"), hourly_actuals)
+
+        result: dict[tuple[date, int], float] = {}
+        # Combine keys from both
+        all_keys = set(hourly_actuals.keys()) | set(hourly_forecasts.keys())
+
+        for key in all_keys:
+            # If we have actuals for this hour, use them (minimum of the actuals)
+            if key in hourly_actuals:
+                result[key] = min(hourly_actuals[key])
+            # Otherwise use forecasts
+            else:
+                result[key] = min(hourly_forecasts[key])
+
+        return result
 
     @callback
     def async_update_costs(self, delta: float, prices: dict[str, float]) -> None:
@@ -114,16 +204,48 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             self._cache_loaded = True
 
         now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+        today_date = poland_now.date()
 
         # Monthly reset check
         if now.day == 1 and self.last_reset.month != now.month:
             _LOGGER.info("Monthly cost reset triggered")
             self.costs = dict.fromkeys(self.costs, 0.0)
             self.last_reset = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        today_date = now.date()
-        tomorrow_date = today_date + timedelta(days=1)
 
-        data_updated = False
+        # 1. Fetch frequent data (Load, Generation)
+        try:
+            await self._update_pse_frequent_data(today_date)
+            self.api_connected = True
+            self._error_count = 0
+        except Exception as e:
+            _LOGGER.warning("Failed to fetch frequent PSE data: %s", e)
+            self.api_connected = False
+            self._error_count += 1
+
+        # 2. Fetch prices twice a day (00:01 and 12:00) or if missing
+        last_price_update = self._internal_data.get("last_price_update")
+        needs_price_update = False
+
+        if not self._internal_data.get("today") or self._internal_data.get("today_date") != today_date:
+            needs_price_update = True
+        elif poland_now.hour >= 12 and (
+            not self._internal_data.get("tomorrow") or self._internal_data.get("tomorrow_date") != (today_date + timedelta(days=1))
+        ):
+            needs_price_update = True
+        elif last_price_update:
+            last_p_poland = last_price_update.astimezone(poland_tz)
+            if last_p_poland.hour < 12 <= poland_now.hour:
+                needs_price_update = True
+
+        if needs_price_update:
+            try:
+                await self._update_pse_prices(today_date)
+                self._internal_data["last_price_update"] = now
+                self.last_update_time = now
+            except Exception as e:
+                _LOGGER.error("Failed to update PSE prices: %s", e)
 
         # Handle day transition (midnight)
         if (
@@ -135,54 +257,8 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             self._internal_data["today_date"] = self._internal_data["tomorrow_date"]
             self._internal_data["tomorrow"] = None
             self._internal_data["tomorrow_date"] = None
-            data_updated = True
 
-        # Fetch today's data if missing or date mismatch
-        if (
-            not self._internal_data["today"]
-            or self._internal_data["today_date"] != today_date
-        ):
-            today_prices = await self._fetch_data(today_date)
-            if today_prices:
-                self._internal_data["today"] = today_prices
-                self._internal_data["today_date"] = today_date
-                self.api_connected = True
-                self._error_count = 0
-                self.update_interval = timedelta(minutes=5)
-                data_updated = True
-            else:
-                _LOGGER.warning("Failed to fetch today's prices (%s)", today_date)
-                self._error_count += 1
-                # Exponential backoff: 5, 10, 20, 40, up to 60 minutes
-                backoff_mins = min(5 * (2 ** (self._error_count - 1)), 60)
-                self.update_interval = timedelta(minutes=backoff_mins)
-                _LOGGER.info("API error: backing off for %d minutes", backoff_mins)
-
-                # If we have no data for today, keep api_connected as False
-                # but we will still try to use cache if it matches the date (checked above in transition)
-                if (
-                    not self._internal_data["today"]
-                    or self._internal_data["today_date"] != today_date
-                ):
-                    self.api_connected = False
-
-        # Fetch tomorrow's data if missing or date mismatch
-        if (
-            not self._internal_data["tomorrow"]
-            or self._internal_data["tomorrow_date"] != tomorrow_date
-        ):
-            tomorrow_prices = await self._fetch_data(tomorrow_date)
-            if tomorrow_prices:
-                self._internal_data["tomorrow"] = tomorrow_prices
-                self._internal_data["tomorrow_date"] = tomorrow_date
-                data_updated = True
-            else:
-                _LOGGER.debug("Tomorrow's prices (%s) not yet available", tomorrow_date)
-
-        if data_updated:
-            await self._save_cache()
-
-        self._schedule_hour_update()
+        await self._save_cache()
 
         # Raise error only if we have no data at all for today
         if not self._internal_data["today"]:
@@ -193,29 +269,38 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             "tomorrow": self._internal_data["tomorrow"],
             "costs": self.costs,
             "last_reset": self.last_reset,
+            "load_actual": self._internal_data.get("load_actual"),
+            "load_fcst": self._internal_data.get("load_fcst"),
+            "gen_wi": self._internal_data.get("gen_wi"),
+            "gen_fv": self._internal_data.get("gen_fv"),
+            "kse_pow_dem": self._internal_data.get("kse_pow_dem"),
+            "imb_energy": self._internal_data.get("imb_energy"),
         }
 
-        # Calculate daily statistics (Averages and Mins)
+        # Calculate daily statistics
         for day in ["today", "tomorrow"]:
             prices = data.get(day)
             if prices:
-                # Average Price Calculation
                 avg = sum(prices.values()) / len(prices)
                 data[f"{day}_avg"] = round(avg, 4)
 
-                # Identify the hour with the lowest price
                 min_price = min(prices.values())
-                min_hours = [h for h, p in prices.items() if p == min_price]
-                data[f"{day}_min_hour"] = min_hours[0] if min_hours else None
+                min_hour = [h for h, p in prices.items() if p == min_price][0]
+                data[f"{day}_min_hour"] = min_hour
+
+                max_price = max(prices.values())
+                max_hour = [h for h, p in prices.items() if p == max_price][0]
+                data[f"{day}_max_hour"] = max_hour
+                data[f"{day}_max_price"] = max_price
 
         return data
 
     async def _load_cache(self) -> None:
-        """Load previously saved prices from the persistent store."""
+        """Load previously saved data from the persistent store."""
         try:
             cached = await self.store.async_load()
             if cached:
-                _LOGGER.debug("Loaded prices from persistent cache")
+                _LOGGER.debug("Loaded data from persistent cache")
                 self._internal_data = {
                     "today": (
                         {int(k): v for k, v in cached.get("today", {}).items()}
@@ -237,6 +322,17 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                         if cached.get("tomorrow_date")
                         else None
                     ),
+                    "last_price_update": (
+                        dt_util.parse_datetime(cached["last_price_update"])
+                        if cached.get("last_price_update")
+                        else None
+                    ),
+                    "load_actual": cached.get("load_actual"),
+                    "load_fcst": cached.get("load_fcst"),
+                    "gen_wi": cached.get("gen_wi"),
+                    "gen_fv": cached.get("gen_fv"),
+                    "kse_pow_dem": cached.get("kse_pow_dem"),
+                    "imb_energy": cached.get("imb_energy"),
                 }
                 if last_update := cached.get("last_update_time"):
                     self.last_update_time = dt_util.parse_datetime(last_update)
@@ -250,12 +346,18 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                         dt_util.parse_datetime(last_reset) or self.last_reset
                     )
 
-                # Populate self.data immediately for faster integration startup
+                # Populate self.data immediately
                 self.data = {
                     "today": self._internal_data["today"],
                     "tomorrow": self._internal_data["tomorrow"],
                     "costs": self.costs,
                     "last_reset": self.last_reset,
+                    "load_actual": self._internal_data["load_actual"],
+                    "load_fcst": self._internal_data["load_fcst"],
+                    "gen_wi": self._internal_data["gen_wi"],
+                    "gen_fv": self._internal_data["gen_fv"],
+                    "kse_pow_dem": self._internal_data["kse_pow_dem"],
+                    "imb_energy": self._internal_data["imb_energy"],
                 }
         except Exception as e:
             _LOGGER.error("Error loading cache: %s", e)
@@ -273,9 +375,20 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 "last_update_time": (
                     self.last_update_time.isoformat() if self.last_update_time else None
                 ),
+                "last_price_update": (
+                    self._internal_data["last_price_update"].isoformat()
+                    if self._internal_data.get("last_price_update")
+                    else None
+                ),
                 "api_connected": self.api_connected,
                 "costs": self.costs,
                 "last_reset": self.last_reset.isoformat() if self.last_reset else None,
+                "load_actual": self._internal_data.get("load_actual"),
+                "load_fcst": self._internal_data.get("load_fcst"),
+                "gen_wi": self._internal_data.get("gen_wi"),
+                "gen_fv": self._internal_data.get("gen_fv"),
+                "kse_pow_dem": self._internal_data.get("kse_pow_dem"),
+                "imb_energy": self._internal_data.get("imb_energy"),
             }
             await self.store.async_save(data_to_save)
         except Exception as e:

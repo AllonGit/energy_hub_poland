@@ -2,6 +2,7 @@
 
 DOMAIN = "energy_hub_poland"
 API_URL = "https://datahub.gkpge.pl/api/tge/quote"
+PSE_API_URL = "https://api.raporty.pse.pl/api"
 
 # Configuration keys
 CONF_OPERATION_MODE = "operation_mode"
@@ -60,3 +61,13 @@ PROVIDER_STOEN = "stoen"
 # Sensor Types
 SENSOR_TYPE_TOTAL_INCREASING = "total_increasing"
 SENSOR_TYPE_DAILY = "daily"
+
+# PSE Sensor Constants
+ATTR_LOAD_ACTUAL = "load_actual"
+ATTR_LOAD_FCST = "load_fcst"
+ATTR_GEN_WI = "gen_wi"
+ATTR_GEN_FV = "gen_fv"
+ATTR_KSE_POW_DEM = "kse_pow_dem"
+ATTR_CEN_FCST = "cen_fcst"
+ATTR_IMB_ENERGY = "imb_energy"
+ATTR_IS_ACTIVE = "is_active"
