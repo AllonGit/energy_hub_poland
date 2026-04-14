@@ -31,6 +31,6 @@ jobs:
           zip -r ../energy_hub_poland.zip energy_hub_poland/
 
       - name: Upload zip to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: energy_hub_poland.zip
