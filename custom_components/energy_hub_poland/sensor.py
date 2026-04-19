@@ -528,11 +528,11 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             today_raw = self.coordinator.data.get("today", {})
             tomorrow_raw = self.coordinator.data.get("tomorrow", {})
 
-            today_total = {
+            today_total: dict[Any, float | None] = {
                 h: self._calculate_total_price(p, "dynamic")
                 for h, p in today_raw.items()
             }
-            tomorrow_total = {
+            tomorrow_total: dict[Any, float | None] = {
                 h: self._calculate_total_price(p, "dynamic")
                 for h, p in tomorrow_raw.items()
             }
@@ -545,8 +545,11 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             )
             today_avg = self.coordinator.data.get("today_avg")
             if today_avg is not None:
-                total_avg = self._calculate_total_price(today_avg, "dynamic")
-                attrs["today_average"] = self._convert_price(total_avg)
+                total_avg: float | None = self._calculate_total_price(
+                    today_avg, "dynamic"
+                )
+                if total_avg is not None:
+                    attrs["today_average"] = self._convert_price(total_avg)
 
         return attrs
 
@@ -595,7 +598,7 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
         val = min(prices.values()) if self._mode == "min" else max(prices.values())
         matching_hours = [h for h, p in prices.items() if p == val]
 
-        attrs = {}
+        attrs: dict[str, Any] = {}
         if len(matching_hours) == 1:
             attrs["hour"] = f"{matching_hours[0]:02d}:00"
         else:

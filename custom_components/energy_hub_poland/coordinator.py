@@ -70,8 +70,8 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
     def _adjust_update_interval(self) -> None:
         """Adjust the coordinator update interval after repeated failures."""
-        normal_interval = timedelta(minutes=DEFAULT_UPDATE_INTERVAL_MINUTES)
-        backoff_interval = timedelta(minutes=ERROR_BACKOFF_INTERVAL_MINUTES)
+        normal_interval: timedelta = timedelta(minutes=DEFAULT_UPDATE_INTERVAL_MINUTES)
+        backoff_interval: timedelta = timedelta(minutes=ERROR_BACKOFF_INTERVAL_MINUTES)
 
         if self._error_count >= ERROR_BACKOFF_THRESHOLD:
             if self.update_interval != backoff_interval:

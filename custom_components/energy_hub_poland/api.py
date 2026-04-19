@@ -22,7 +22,7 @@ class PSEApiClient:
             "Accept": "application/json",
             "User-Agent": "HomeAssistant-EnergyHub-Client",
         }
-        self._last_response_schema = None
+        self._last_response_schema: str | None = None
 
     async def _async_get_data(
         self, endpoint: str, select_fields: str, for_date: date
@@ -76,10 +76,6 @@ class PSEApiClient:
                         e,
                     )
                     return None
-
-    def _get_schema(self, record: dict[str, Any]) -> str:
-        """Get a string representation of the record schema."""
-        return ",".join(sorted(record.keys()))
 
     def _get_schema(self, record: dict[str, Any]) -> str:
         """Get a string representation of the record schema."""
