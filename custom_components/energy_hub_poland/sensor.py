@@ -447,7 +447,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
     """Sensor providing the current price for a specific tariff."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = None
 
     def __init__(
         self,
@@ -555,7 +555,7 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
     """Sensor for the minimum or maximum energy price of the day (RCE)."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = None
 
     def __init__(
         self,
@@ -608,7 +608,7 @@ class AveragePriceSensor(EnergyHubSensorEntity):
     """Sensor for the average energy price of the day (RCE)."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = None
 
     def __init__(
         self,

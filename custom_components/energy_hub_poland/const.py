@@ -1,18 +1,19 @@
 """Constants for the Energy Hub Poland integration."""
 
-import json
-from pathlib import Path
-
 DOMAIN = "energy_hub_poland"
 API_URL = "https://datahub.gkpge.pl/api/tge/quote"
 PSE_API_URL = "https://api.raporty.pse.pl/api"
 
-ICON_FILE = Path(__file__).with_name("icons.json")
-try:
-    with open(ICON_FILE, encoding="utf-8") as icon_file:
-        ICONS = json.load(icon_file)
-except Exception:
-    ICONS = {}
+ICONS = {
+    "recommendation": "mdi:lightbulb-auto",
+    "kse_load": "mdi:transmission-tower",
+    "kse_generation": "mdi:solar-power-variant",
+    "price_spike": "mdi:chart-line-variant",
+    "negative_price": "mdi:currency-pln-circle",
+    "api_status": "mdi:cloud-check",
+    "lowest_price_hour": "mdi:clock-outline",
+    "highest_price_hour": "mdi:clock-alert-outline",
+}
 
 # Configuration keys
 CONF_OPERATION_MODE = "operation_mode"
