@@ -19,3 +19,10 @@ testpaths = ["tests"]
 markers = [
     "contract: tests that call the real API (require internet)",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+namespace_packages = true
+explicit_package_bases = true
+package_bases = ["custom_components=custom_components"]
