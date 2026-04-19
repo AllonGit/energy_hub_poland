@@ -89,7 +89,7 @@ Najpotężniejsza funkcja integracji.
 
 **Średnie ceny zamiast minimum:** Dla większej dokładności, ceny godzinowe są teraz obliczane jako średnia z wszystkich kwadransów w danej godzinie.
 
-**Nowe pliki i struktura:** Dodano `tariffs.py` dla lepszej organizacji kodu taryfowego, `icons.json` z ikonami sensorów oraz `services.yaml` z usługami integracji.
+**Nowe pliki i struktura:** Dodano `tariffs.py` dla lepszej organizacji kodu taryfowego oraz `services.yaml` z usługami integracji. Ikony czujników są teraz trwale zdefiniowane w `const.py`.
 
 ---
 

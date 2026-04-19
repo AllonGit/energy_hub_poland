@@ -68,7 +68,7 @@ The integration's most powerful feature.
 
 **Average Prices:** For better accuracy, hourly prices are now calculated as averages from all 15-minute intervals in the hour.
 
-**New Files and Structure:** Added `tariffs.py` for better tariff code organization, `icons.json` with sensor icons, and `services.yaml` with integration services.
+**New Files and Structure:** Added `tariffs.py` for better tariff code organization and `services.yaml` with integration services. Sensor icons are now defined directly in `const.py`.
 
 ---
 
