@@ -1,5 +1,6 @@
 """API client for Energy Hub Poland."""
 
+import asyncio
 import logging
 from datetime import date
 from typing import Any
@@ -11,7 +12,6 @@ from .const import API_URL, PSE_API_URL
 _LOGGER = logging.getLogger(__package__)
 
 
-# TODO: API behavior monitoring
 class PSEApiClient:
     """API client from PSE."""
 
@@ -22,11 +22,12 @@ class PSEApiClient:
             "Accept": "application/json",
             "User-Agent": "HomeAssistant-EnergyHub-Client",
         }
+        self._last_response_schema = None
 
     async def _async_get_data(
         self, endpoint: str, select_fields: str, for_date: date
     ) -> list[dict[str, Any]] | None:
-        """Fetch generic data from PSE API."""
+        """Fetch generic data from PSE API with retry logic."""
         date_str = for_date.strftime("%Y-%m-%d")
         url = f"{PSE_API_URL}/{endpoint}"
         params = {
@@ -35,19 +36,54 @@ class PSEApiClient:
             "$first": 50,
         }
 
-        try:
-            async with async_timeout.timeout(15):
-                response = await self._session.get(
-                    url, params=params, headers=self._headers
-                )
-                response.raise_for_status()
-                data = await response.json()
-                return data.get("value", [])
-        except Exception as e:
-            _LOGGER.error(
-                "Error fetching %s from PSE for %s: %s", endpoint, date_str, e
-            )
-            return None
+        for attempt in range(3):  # Retry up to 3 times
+            try:
+                async with async_timeout.timeout(15):
+                    response = await self._session.get(
+                        url, params=params, headers=self._headers
+                    )
+                    response.raise_for_status()
+                    data = await response.json()
+                    result = data.get("value", [])
+
+                    # API behavior monitoring
+                    if result:
+                        current_schema = self._get_schema(result[0])
+                        if self._last_response_schema != current_schema:
+                            _LOGGER.info(
+                                "API schema changed for %s: %s",
+                                endpoint,
+                                current_schema,
+                            )
+                            self._last_response_schema = current_schema
+
+                    return result
+            except Exception as e:
+                if attempt < 2:  # Don't log on last attempt
+                    _LOGGER.warning(
+                        "Attempt %d failed for %s on %s: %s. Retrying...",
+                        attempt + 1,
+                        endpoint,
+                        date_str,
+                        e,
+                    )
+                    await asyncio.sleep(1)  # Wait 1 second before retry
+                else:
+                    _LOGGER.error(
+                        "Error fetching %s from PSE for %s after 3 attempts: %s",
+                        endpoint,
+                        date_str,
+                        e,
+                    )
+                    return None
+
+    def _get_schema(self, record: dict[str, Any]) -> str:
+        """Get a string representation of the record schema."""
+        return ",".join(sorted(record.keys()))
+
+    def _get_schema(self, record: dict[str, Any]) -> str:
+        """Get a string representation of the record schema."""
+        return ",".join(sorted(record.keys()))
 
     async def get_rce_prices(self, for_date: date) -> list[dict[str, Any]] | None:
         """Fetch RCE prices."""
@@ -96,7 +132,7 @@ class EnergyHubApiClient:
         """
         date_str = for_date.strftime("%Y-%m-%d")
         url = (
-            f"{API_URL}?source=TGE&contract=Fix_1"
+            f"{API_URL}?source=TGE&contract=Fix_2"
             f"&date_from={date_str} 00:00:00"
             f"&date_to={date_str} 23:59:59&limit=100"
         )

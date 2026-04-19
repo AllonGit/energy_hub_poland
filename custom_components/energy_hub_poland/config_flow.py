@@ -18,6 +18,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_ENABLED_TARIFFS,
     CONF_ENERGY_SENSOR,
     CONF_G11_SETTINGS,
     CONF_G12_SETTINGS,
@@ -31,6 +32,9 @@ from .const import (
     CONF_HOURS_PEAK_2_WINTER,
     CONF_HOURS_PEAK_SUMMER,
     CONF_HOURS_PEAK_WINTER,
+    CONF_NETWORK_FIXED_FEE,
+    CONF_NETWORK_VARIABLE_FEE,
+    CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
     CONF_OPERATION_MODE,
     CONF_PRICE_OFFPEAK,
     CONF_PRICE_PEAK,
@@ -40,6 +44,7 @@ from .const import (
     CONF_PROVIDER,
     CONF_SENSOR_TYPE,
     CONF_SPIKE_THRESHOLD,
+    CONF_VAT_RATE,
     MODE_COMPARISON,
     MODE_DYNAMIC,
     MODE_G11,
@@ -58,6 +63,7 @@ from .const import (
     UNIT_KWH,
     UNIT_MWH,
 )
+from .helpers import parse_hour_ranges
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -91,11 +97,36 @@ PROVIDER_DEFAULTS = {
 
 
 def validate_hour_format(user_input: str) -> bool:
-    """Validate hour range format (e.g., '6-13,15-22')."""
+    """Validate hour range format and check for overlapping ranges."""
     if not user_input:
         return True
     pattern = re.compile(r"^\d{1,2}-\d{1,2}(,\d{1,2}-\d{1,2})*$")
-    return pattern.match(user_input) is not None
+    if pattern.match(user_input) is None:
+        return False
+
+    ranges = parse_hour_ranges(user_input)
+    if not ranges:
+        return False
+
+    seen_hours: set[int] = set()
+    for start, end in ranges:
+        if start < 0 or start > 23 or end < 0 or end > 24:
+            return False
+        if start == end:
+            return False
+
+        hours = []
+        if start < end:
+            hours = list(range(start, end))
+        else:
+            hours = list(range(start, 24)) + list(range(0, end))
+
+        for hour in hours:
+            if hour in seen_hours:
+                return False
+            seen_hours.add(hour)
+
+    return True
 
 
 def validate_entity_id(entity_id: str) -> bool:
@@ -153,16 +184,27 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             self.config_data.update(user_input)
 
             if mode == MODE_DYNAMIC:
-                # Dynamic mode only needs advanced settings then it's done (no extra energy sensor step)
-                return await self.async_finish_config()
+                return await self.async_step_network_fees_config()
             if mode == MODE_G12:
                 return await self.async_step_g12_config()
             if mode == MODE_G12W:
                 return await self.async_step_g12w_config()
             if mode == MODE_COMPARISON:
-                return await self.async_step_g11_config()
+                return await self.async_step_tariff_selection()
+
+        # For new installations or re-runs of config flow
+        default_vat = self.config_data.get(CONF_VAT_RATE)
+        if default_vat is None:
+            default_vat = "23" if self.config_data.get("add_vat") else "23"
 
         schema = {
+            vol.Required(CONF_VAT_RATE, default=default_vat): SelectSelector(
+                SelectSelectorConfig(
+                    options=["0", "5", "23"],
+                    mode=SelectSelectorMode.DROPDOWN,
+                    translation_key="vat_rate",
+                )
+            ),
             vol.Required(CONF_PRICE_UNIT, default=UNIT_KWH): SelectSelector(
                 SelectSelectorConfig(
                     options=[UNIT_KWH, UNIT_MWH],
@@ -196,19 +238,156 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             step_id="advanced_config", data_schema=vol.Schema(schema)
         )
 
+    def _get_selected_tariffs(self) -> list[str]:
+        enabled_tariffs = self.config_data.get(CONF_ENABLED_TARIFFS, [])
+        order = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        return [tariff for tariff in order if tariff in enabled_tariffs]
+
+    def _get_next_selected_tariff(self, current: str | None = None) -> str | None:
+        selected = self._get_selected_tariffs()
+        if not selected:
+            return None
+        if current is None:
+            return selected[0]
+        try:
+            index = selected.index(current)
+        except ValueError:
+            return selected[0]
+        if index + 1 < len(selected):
+            return selected[index + 1]
+        return None
+
+    async def _async_step_next_selected_tariff(
+        self, current: str | None = None
+    ) -> FlowResult:
+        """Proceed to the next enabled tariff step in Comparison mode."""
+        next_tariff = self._get_next_selected_tariff(current)
+        if next_tariff is None:
+            return await self.async_step_energy_sensor()
+
+        if next_tariff == "dynamic":
+            return await self.async_step_dynamic_config()
+        return await getattr(self, f"async_step_{next_tariff}_config")()
+
+    async def async_step_tariff_selection(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle tariff selection"""
+        if user_input is not None:
+            enabled_tariffs = [k for k, v in user_input.items() if v]
+            if not enabled_tariffs:
+                return self.async_show_form(
+                    step_id="tariff_selection",
+                    data_schema=vol.Schema(
+                        {
+                            vol.Required("dynamic", default=True): bool,
+                            vol.Required("g11", default=True): bool,
+                            vol.Required("g12", default=True): bool,
+                            vol.Required("g12w", default=True): bool,
+                            vol.Required("g12n", default=False): bool,
+                            vol.Required("g13", default=True): bool,
+                        }
+                    ),
+                    errors={"base": "no_tariff_selected"},
+                )
+
+            self.config_data[CONF_ENABLED_TARIFFS] = enabled_tariffs
+            return await self._async_step_next_selected_tariff()
+
+        provider = self.config_data.get(CONF_PROVIDER, PROVIDER_CUSTOM)
+        default_enabled = ["dynamic", "g11", "g12", "g12w", "g13"]
+        if provider == PROVIDER_PGE:
+            default_enabled.append("g12n")
+
+        schema = {
+            vol.Required("dynamic", default="dynamic" in default_enabled): bool,
+            vol.Required("g11", default="g11" in default_enabled): bool,
+            vol.Required("g12", default="g12" in default_enabled): bool,
+            vol.Required("g12w", default="g12w" in default_enabled): bool,
+            vol.Required("g12n", default="g12n" in default_enabled): bool,
+            vol.Required("g13", default="g13" in default_enabled): bool,
+        }
+
+        return self.async_show_form(
+            step_id="tariff_selection",
+            data_schema=vol.Schema(schema),
+        )
+
+    async def async_step_network_fees_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle network fees configuration."""
+        if user_input is not None:
+            self.config_data.update(user_input)
+            mode = self.config_data.get(CONF_OPERATION_MODE)
+            if mode == MODE_DYNAMIC:
+                return await self.async_finish_config()
+            return await self.async_step_g11_config()
+
+        return self.async_show_form(
+            step_id="network_fees_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_NETWORK_FIXED_FEE,
+                        default=self.config_data.get(CONF_NETWORK_FIXED_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=self.config_data.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
+                        default=self.config_data.get(
+                            CONF_NETWORK_VARIABLE_FEE_DYNAMIC, 0.0
+                        ),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                }
+            ),
+        )
+
+    async def async_step_dynamic_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle dynamic tariff settings in Comparison mode."""
+        if user_input is not None:
+            self.config_data.update(user_input)
+            return await self._async_step_next_selected_tariff("dynamic")
+
+        return self.async_show_form(
+            step_id="dynamic_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
+                        default=self.config_data.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                }
+            ),
+        )
+
     async def async_step_g11_config(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Handle G11 tariff configuration (flat rate)."""
         if user_input is not None:
             self.config_data[CONF_G11_SETTINGS] = user_input
-            return await self.async_step_g12_config()
+            if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                return await self._async_step_next_selected_tariff("g11")
+            return await self.async_finish_config()
 
+        s = self.config_data.get(CONF_G11_SETTINGS, {})
         return self.async_show_form(
             step_id="g11_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PRICE_PEAK, default=0.80): vol.Coerce(float),
+                    vol.Required(
+                        CONF_PRICE_PEAK, default=s.get(CONF_PRICE_PEAK, 0.80)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 }
             ),
         )
@@ -232,20 +411,34 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 errors["base"] = "invalid_hour_range"
             else:
                 self.config_data[CONF_G12_SETTINGS] = user_input
-                mode = self.config_data[CONF_OPERATION_MODE]
-                if mode == MODE_COMPARISON:
-                    return await self.async_step_g12w_config()
+                if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                    return await self._async_step_next_selected_tariff("g12")
                 return await self.async_finish_config()
 
         default_hours = self._get_default_hours()
+        s = self.config_data.get(CONF_G12_SETTINGS, {})
         return self.async_show_form(
             step_id="g12_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PRICE_PEAK, default=0.80): vol.Coerce(float),
-                    vol.Required(CONF_PRICE_OFFPEAK, default=0.50): vol.Coerce(float),
-                    vol.Required(CONF_HOURS_PEAK_SUMMER, default=default_hours): str,
-                    vol.Required(CONF_HOURS_PEAK_WINTER, default=default_hours): str,
+                    vol.Required(
+                        CONF_PRICE_PEAK, default=s.get(CONF_PRICE_PEAK, 0.80)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.50)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Required(
+                        CONF_HOURS_PEAK_SUMMER,
+                        default=s.get(CONF_HOURS_PEAK_SUMMER, default_hours),
+                    ): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_WINTER,
+                        default=s.get(CONF_HOURS_PEAK_WINTER, default_hours),
+                    ): str,
                 }
             ),
             errors=errors,
@@ -263,20 +456,34 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 errors["base"] = "invalid_hour_range"
             else:
                 self.config_data[CONF_G12W_SETTINGS] = user_input
-                mode = self.config_data[CONF_OPERATION_MODE]
-                if mode == MODE_COMPARISON:
-                    return await self.async_step_g12n_config()
+                if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                    return await self._async_step_next_selected_tariff("g12w")
                 return await self.async_finish_config()
 
         default_hours = self._get_default_hours()
+        s = self.config_data.get(CONF_G12W_SETTINGS, {})
         return self.async_show_form(
             step_id="g12w_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PRICE_PEAK, default=0.85): vol.Coerce(float),
-                    vol.Required(CONF_PRICE_OFFPEAK, default=0.55): vol.Coerce(float),
-                    vol.Required(CONF_HOURS_PEAK_SUMMER, default=default_hours): str,
-                    vol.Required(CONF_HOURS_PEAK_WINTER, default=default_hours): str,
+                    vol.Required(
+                        CONF_PRICE_PEAK, default=s.get(CONF_PRICE_PEAK, 0.85)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.55)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Required(
+                        CONF_HOURS_PEAK_SUMMER,
+                        default=s.get(CONF_HOURS_PEAK_SUMMER, default_hours),
+                    ): str,
+                    vol.Required(
+                        CONF_HOURS_PEAK_WINTER,
+                        default=s.get(CONF_HOURS_PEAK_WINTER, default_hours),
+                    ): str,
                 }
             ),
             errors=errors,
@@ -288,14 +495,25 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
         """Handle G12n tariff configuration (PGE rules)."""
         if user_input is not None:
             self.config_data[CONF_G12N_SETTINGS] = user_input
-            return await self.async_step_g13_config()
+            if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                return await self._async_step_next_selected_tariff("g12n")
+            return await self.async_finish_config()
 
+        s = self.config_data.get(CONF_G12N_SETTINGS, {})
         return self.async_show_form(
             step_id="g12n_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PRICE_PEAK, default=0.80): vol.Coerce(float),
-                    vol.Required(CONF_PRICE_OFFPEAK, default=0.45): vol.Coerce(float),
+                    vol.Required(
+                        CONF_PRICE_PEAK, default=s.get(CONF_PRICE_PEAK, 0.80)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.45)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 }
             ),
         )
@@ -316,7 +534,9 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 errors["base"] = "invalid_hour_range"
             else:
                 self.config_data[CONF_G13_SETTINGS] = user_input
-                return await self.async_step_energy_sensor()
+                if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                    return await self.async_step_energy_sensor()
+                return await self.async_finish_config()
 
         provider = self.config_data.get(CONF_PROVIDER)
         defaults = PROVIDER_DEFAULTS.get(  # type: ignore
@@ -324,24 +544,39 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             {},  # type: ignore
         ).get("g13", {"p1_s": "7-13", "p2_s": "19-22", "p1_w": "7-13", "p2_w": "16-21"})
 
+        s = self.config_data.get(CONF_G13_SETTINGS, {})
         return self.async_show_form(
             step_id="g13_config",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_PRICE_PEAK_1, default=1.00): vol.Coerce(float),
-                    vol.Required(CONF_PRICE_PEAK_2, default=0.80): vol.Coerce(float),
-                    vol.Required(CONF_PRICE_OFFPEAK, default=0.50): vol.Coerce(float),
                     vol.Required(
-                        CONF_HOURS_PEAK_1_SUMMER, default=defaults["p1_s"]
+                        CONF_PRICE_PEAK_1, default=s.get(CONF_PRICE_PEAK_1, 1.00)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_PEAK_2, default=s.get(CONF_PRICE_PEAK_2, 0.80)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.50)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Required(
+                        CONF_HOURS_PEAK_1_SUMMER,
+                        default=s.get(CONF_HOURS_PEAK_1_SUMMER, defaults["p1_s"]),
                     ): str,
                     vol.Required(
-                        CONF_HOURS_PEAK_2_SUMMER, default=defaults["p2_s"]
+                        CONF_HOURS_PEAK_2_SUMMER,
+                        default=s.get(CONF_HOURS_PEAK_2_SUMMER, defaults["p2_s"]),
                     ): str,
                     vol.Required(
-                        CONF_HOURS_PEAK_1_WINTER, default=defaults["p1_w"]
+                        CONF_HOURS_PEAK_1_WINTER,
+                        default=s.get(CONF_HOURS_PEAK_1_WINTER, defaults["p1_w"]),
                     ): str,
                     vol.Required(
-                        CONF_HOURS_PEAK_2_WINTER, default=defaults["p2_w"]
+                        CONF_HOURS_PEAK_2_WINTER,
+                        default=s.get(CONF_HOURS_PEAK_2_WINTER, defaults["p2_w"]),
                     ): str,
                 }
             ),
@@ -448,7 +683,21 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     settings = {}
                     keys_to_remove = []
                     for k, v in temp_input.items():
-                        if k.startswith(prefix_with_underscore):
+                        if k.startswith(prefix_with_underscore) and k.replace(
+                            prefix_with_underscore, ""
+                        ) in [
+                            CONF_PRICE_PEAK,
+                            CONF_PRICE_OFFPEAK,
+                            CONF_PRICE_PEAK_1,
+                            CONF_PRICE_PEAK_2,
+                            CONF_HOURS_PEAK_SUMMER,
+                            CONF_HOURS_PEAK_WINTER,
+                            CONF_HOURS_PEAK_1_SUMMER,
+                            CONF_HOURS_PEAK_2_SUMMER,
+                            CONF_HOURS_PEAK_1_WINTER,
+                            CONF_HOURS_PEAK_2_WINTER,
+                            "network_variable_fee",
+                        ]:
                             settings[k.replace(prefix_with_underscore, "")] = v
                             keys_to_remove.append(k)
                     if settings:
@@ -460,6 +709,20 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data=new_options)
 
         schema = {}
+
+        # VAT rate
+        # Migrate add_vat to vat_rate if exists
+        default_vat = config.get(CONF_VAT_RATE)
+        if default_vat is None:
+            default_vat = "23" if config.get("add_vat") else "0"
+
+        schema[vol.Required(CONF_VAT_RATE, default=default_vat)] = SelectSelector(
+            SelectSelectorConfig(
+                options=["0", "5", "23"],
+                mode=SelectSelectorMode.DROPDOWN,
+                translation_key="vat_rate",
+            )
+        )
 
         # Unit selection is always available
         schema[
@@ -498,6 +761,25 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             )
 
+        # Global network fees
+        schema[
+            vol.Optional(
+                CONF_NETWORK_FIXED_FEE, default=config.get(CONF_NETWORK_FIXED_FEE, 0.0)
+            )
+        ] = vol.Coerce(float)
+        schema[
+            vol.Optional(
+                CONF_NETWORK_VARIABLE_FEE,
+                default=config.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+            )
+        ] = vol.Coerce(float)
+        schema[
+            vol.Optional(
+                CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
+                default=config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC, 0.0),
+            )
+        ] = vol.Coerce(float)
+
         # Populate schema with fields relevant to the current mode
         tariffs_to_show = []
         if mode == MODE_COMPARISON:
@@ -513,6 +795,12 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         "g11_settings_price_peak", default=s.get(CONF_PRICE_PEAK, 0.80)
                     )
                 ] = vol.Coerce(float)
+                schema[
+                    vol.Optional(
+                        "g11_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    )
+                ] = vol.Coerce(float)
             elif t == MODE_G12:
                 s = config.get(CONF_G12_SETTINGS, {})
                 schema[
@@ -524,6 +812,12 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(
                         "g12_settings_price_offpeak",
                         default=s.get(CONF_PRICE_OFFPEAK, 0.50),
+                    )
+                ] = vol.Coerce(float)
+                schema[
+                    vol.Optional(
+                        "g12_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
                     )
                 ] = vol.Coerce(float)
                 schema[
@@ -552,6 +846,12 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     )
                 ] = vol.Coerce(float)
                 schema[
+                    vol.Optional(
+                        "g12w_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    )
+                ] = vol.Coerce(float)
+                schema[
                     vol.Required(
                         "g12w_settings_hours_peak_summer",
                         default=s.get(CONF_HOURS_PEAK_SUMMER, DEFAULT_G12_PEAK_HOURS),
@@ -576,6 +876,12 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_PRICE_OFFPEAK, 0.45),
                     )
                 ] = vol.Coerce(float)
+                schema[
+                    vol.Optional(
+                        "g12n_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    )
+                ] = vol.Coerce(float)
             elif t == MODE_G13:
                 s = config.get(CONF_G13_SETTINGS, {})
                 schema[
@@ -594,6 +900,12 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     vol.Required(
                         "g13_settings_price_offpeak",
                         default=s.get(CONF_PRICE_OFFPEAK, 0.50),
+                    )
+                ] = vol.Coerce(float)
+                schema[
+                    vol.Optional(
+                        "g13_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
                     )
                 ] = vol.Coerce(float)
 

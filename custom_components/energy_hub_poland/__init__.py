@@ -22,7 +22,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Energy Hub from a config entry."""
-    _LOGGER.info("Ładowanie integracji Energy Hub Poland dla wpisu: %s", entry.title)
+    _LOGGER.debug("Ładowanie integracji Energy Hub Poland dla wpisu: %s", entry.title)
 
     # Migrate unique IDs if necessary
     from homeassistant.helpers import entity_registry as er
@@ -91,6 +91,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     entry.async_on_unload(entry.add_update_listener(update_listener))
+
+    # Register services for this entry
+    async def handle_update_prices(call: Any) -> None:
+        """Handle the service call to force price update."""
+        entry_id = call.data.get("entry_id", entry.entry_id)
+        if entry_id == entry.entry_id:
+            coordinator = hass.data[DOMAIN][entry.entry_id]
+            _LOGGER.debug("Forcing price update via service call")
+            await coordinator.async_request_refresh()
+
+    hass.services.async_register(
+        DOMAIN, "update_prices", handle_update_prices, supports_response=False
+    )
 
     return True
 

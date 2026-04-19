@@ -2,6 +2,7 @@
 """Sensor platform for Energy Hub Poland."""
 
 import logging
+from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -19,16 +20,21 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    CONF_ENABLED_TARIFFS,
     CONF_ENERGY_SENSOR,
     CONF_G11_SETTINGS,
     CONF_G12_SETTINGS,
     CONF_G12N_SETTINGS,
     CONF_G12W_SETTINGS,
     CONF_G13_SETTINGS,
+    CONF_NETWORK_VARIABLE_FEE,
+    CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
     CONF_OPERATION_MODE,
     CONF_PRICE_UNIT,
     CONF_SENSOR_TYPE,
+    CONF_VAT_RATE,
     DOMAIN,
+    ICONS,
     MODE_COMPARISON,
     MODE_DYNAMIC,
     MODE_G12,
@@ -39,7 +45,7 @@ from .const import (
 )
 from .coordinator import EnergyHubDataCoordinator
 from .entity import EnergyHubEntity as EnergyHubBaseEntity
-from .helpers import (
+from .tariffs import (
     get_current_g11_price,
     get_current_g12_price,
     get_current_g12n_price,
@@ -107,29 +113,45 @@ def setup_pse_sensors(
 def setup_comparison_sensors(
     coordinator: EnergyHubDataCoordinator, entry: ConfigEntry, config: dict[str, Any]
 ) -> list[SensorEntity]:
-    """Set up comparison mode sensors (all tariffs included)."""
-    sensors: list[SensorEntity] = [
-        CurrentPriceSensor(coordinator, entry, "dynamic"),
-        CurrentPriceSensor(coordinator, entry, "g11", config),
-        CurrentPriceSensor(coordinator, entry, "g12", config),
-        CurrentPriceSensor(coordinator, entry, "g12w", config),
-        CurrentPriceSensor(coordinator, entry, "g12n", config),
-        CurrentPriceSensor(coordinator, entry, "g13", config),
-        # Analytical RCE sensors are also useful in Comparison mode
-        MinMaxPriceSensor(coordinator, entry, "today", "min"),
-        MinMaxPriceSensor(coordinator, entry, "today", "max"),
-        AveragePriceSensor(coordinator, entry, "today"),
-        LowestPriceHourSensor(coordinator, entry, "today"),
-        MinMaxPriceSensor(coordinator, entry, "tomorrow", "min"),
-        MinMaxPriceSensor(coordinator, entry, "tomorrow", "max"),
-        AveragePriceSensor(coordinator, entry, "tomorrow"),
-        LowestPriceHourSensor(coordinator, entry, "tomorrow"),
-    ]
+    """Set up comparison mode sensors (enabled tariffs only)."""
+    enabled_tariffs = config.get(
+        CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+    )
+    sensors: list[SensorEntity] = []
+
+    tariff_configs = {
+        "dynamic": None,
+        "g11": config,
+        "g12": config,
+        "g12w": config,
+        "g12n": config,
+        "g13": config,
+    }
+
+    for tariff in enabled_tariffs:
+        if tariff in tariff_configs:
+            sensors.append(
+                CurrentPriceSensor(coordinator, entry, tariff, tariff_configs[tariff])
+            )
+
+    # Analytical RCE sensors
+    sensors.extend(
+        [
+            MinMaxPriceSensor(coordinator, entry, "today", "min"),
+            MinMaxPriceSensor(coordinator, entry, "today", "max"),
+            AveragePriceSensor(coordinator, entry, "today"),
+            LowestPriceHourSensor(coordinator, entry, "today"),
+            MinMaxPriceSensor(coordinator, entry, "tomorrow", "min"),
+            MinMaxPriceSensor(coordinator, entry, "tomorrow", "max"),
+            AveragePriceSensor(coordinator, entry, "tomorrow"),
+            LowestPriceHourSensor(coordinator, entry, "tomorrow"),
+        ]
+    )
     # Recommendation sensor requires an energy sensor to calculate historical costs
     if config.get(CONF_ENERGY_SENSOR):
         sensors.append(RecommendationSensor(coordinator, entry))
-        # Add individual cost sensors for each tariff
-        for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]:
+        # Add individual cost sensors for enabled tariffs
+        for tariff in enabled_tariffs:
             sensors.append(TariffCostSensor(coordinator, entry, tariff))
 
     return sensors
@@ -162,6 +184,43 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         if price_unit == UNIT_MWH:
             return round(value * 1000, 2)
         return round(value, 4)
+
+    def _calculate_total_price(
+        self, energy_price: float | None, tariff: str
+    ) -> float | None:
+        """Apply network fees and VAT to the energy price."""
+        if energy_price is None:
+            return None
+
+        # 1. Get variable network fee for this tariff
+        variable_fee = None
+        if tariff == "dynamic":
+            variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC)
+        else:
+            tariff_settings = self._config.get(f"{tariff}_settings", {})
+            # Try new generic key
+            variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
+            # If not found, try legacy tariff-specific key (e.g., network_variable_fee_g11)
+            if variable_fee is None:
+                legacy_key = f"network_variable_fee_{tariff}"
+                variable_fee = tariff_settings.get(legacy_key)
+
+        # Fallback to global variable fee if tariff-specific is not set or 0
+        if variable_fee is None or float(variable_fee) == 0.0:
+            variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE, 0.0)
+
+        variable_fee = float(variable_fee)
+
+        total_net = energy_price + variable_fee
+
+        # 2. Apply VAT
+        vat_rate_str = self._config.get(CONF_VAT_RATE, "0")
+        try:
+            vat_rate = float(vat_rate_str) / 100
+        except (ValueError, TypeError):
+            vat_rate = 0.0
+
+        return total_net * (1 + vat_rate)
 
 
 class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
@@ -222,7 +281,7 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
 
         today_prices = self.coordinator.data.get("today", {})
 
-        return {
+        prices = {
             "dynamic": today_prices.get(poland_now.hour),
             "g11": get_current_g11_price(self._config.get(CONF_G11_SETTINGS, {})),
             "g12": get_current_g12_price(
@@ -237,6 +296,12 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
             "g13": get_current_g13_price(
                 poland_now, self._config.get(CONF_G13_SETTINGS, {})
             ),
+        }
+
+        # Apply fees and VAT to all
+        return {
+            tariff: self._calculate_total_price(price, tariff)
+            for tariff, price in prices.items()
         }
 
 
@@ -265,12 +330,9 @@ class TariffCostSensor(EnergyHubSensorEntity):
         return round(costs.get(self._tariff, 0.0), 2)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return extra state attributes."""
-        last_reset = self.coordinator.data.get("last_reset")
-        return {
-            "last_reset": last_reset.isoformat() if last_reset else None,
-        }
+    def last_reset(self) -> datetime | None:
+        """Return the timestamp when accumulated costs were last reset."""
+        return self.coordinator.data.get("last_reset")
 
     async def async_added_to_hass(self) -> None:
         """Handle entity being added to HA."""
@@ -299,7 +361,7 @@ class RecommendationSensor(EnergyConsumerEntity):
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_state_class = None
-    _attr_icon = "mdi:lightbulb-auto"
+    _attr_icon = ICONS.get("recommendation")
     _attr_options = ["dynamiczna", "g11", "g12", "g12w", "g12n", "g13", "brak_danych"]
 
     def __init__(
@@ -431,19 +493,62 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
                 poland_now, self._config.get(CONF_G13_SETTINGS, {})
             )
 
-        return self._convert_price(val)
+        total_price = self._calculate_total_price(val, self._tariff)
+        return self._convert_price(total_price)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Expose full day price tables for dynamic mode."""
+        """Expose price forecast tables and statistics for visualization."""
+        attrs = {}
+
+        # Calculation parameters for all tariffs
+        variable_fee = None
+        if self._tariff == "dynamic":
+            variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC)
+        else:
+            tariff_settings = self._config.get(f"{self._tariff}_settings", {})
+            variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
+            if variable_fee is None:
+                variable_fee = tariff_settings.get(
+                    f"network_variable_fee_{self._tariff}"
+                )
+
+        if variable_fee is None or float(variable_fee) == 0.0:
+            variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE, 0.0)
+
+        attrs["network_variable_fee"] = float(variable_fee)
+        attrs["vat_rate"] = f"{self._config.get(CONF_VAT_RATE, '0')}%"
+
         if self._tariff == "dynamic":
             if not self.coordinator.data:
-                return {"today_prices": {}, "tomorrow_prices": {}}
-            return {
-                "today_prices": self.coordinator.data.get("today", {}),
-                "tomorrow_prices": self.coordinator.data.get("tomorrow", {}),
+                attrs.update({"today_prices": {}, "tomorrow_prices": {}})
+                return attrs
+
+            # We want to show total prices (with fees and VAT) in attributes as well
+            today_raw = self.coordinator.data.get("today", {})
+            tomorrow_raw = self.coordinator.data.get("tomorrow", {})
+
+            today_total = {
+                h: self._calculate_total_price(p, "dynamic")
+                for h, p in today_raw.items()
             }
-        return {}
+            tomorrow_total = {
+                h: self._calculate_total_price(p, "dynamic")
+                for h, p in tomorrow_raw.items()
+            }
+
+            attrs.update(
+                {
+                    "today_prices": today_total,
+                    "tomorrow_prices": tomorrow_total,
+                }
+            )
+            today_avg = self.coordinator.data.get("today_avg")
+            if today_avg is not None:
+                total_avg = self._calculate_total_price(today_avg, "dynamic")
+                attrs["today_average"] = self._convert_price(total_avg)
+
+        return attrs
 
 
 class MinMaxPriceSensor(EnergyHubSensorEntity):
@@ -475,7 +580,8 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
         if not prices:
             return None
         val = min(prices.values()) if self._mode == "min" else max(prices.values())
-        return self._convert_price(val)
+        total_price = self._calculate_total_price(val, "dynamic")
+        return self._convert_price(total_price)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -532,13 +638,14 @@ class AveragePriceSensor(EnergyHubSensorEntity):
         if val is None:
             return None
 
-        return self._convert_price(val)
+        total_price = self._calculate_total_price(val, "dynamic")
+        return self._convert_price(total_price)
 
 
 class LowestPriceHourSensor(EnergyHubSensorEntity):
     """Sensor for the hour with the lowest energy price (RCE)."""
 
-    _attr_icon = "mdi:clock-outline"
+    _attr_icon = ICONS.get("lowest_price_hour")
     _attr_state_class = None
 
     def __init__(
@@ -560,7 +667,6 @@ class LowestPriceHourSensor(EnergyHubSensorEntity):
             return None
         hour = self.coordinator.data.get(f"{self._day}_min_hour")
 
-        # Compatibility with tests
         if hour is None:
             prices = self.coordinator.data.get(self._day, {})
             if prices:
@@ -569,11 +675,23 @@ class LowestPriceHourSensor(EnergyHubSensorEntity):
 
         return f"{hour:02d}:00" if hour is not None else None
 
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return price for this hour as an attribute."""
+        if not self.coordinator.data:
+            return {}
+        prices = self.coordinator.data.get(self._day, {})
+        if not prices:
+            return {}
+        min_price = min(prices.values())
+        total_price = self._calculate_total_price(min_price, "dynamic")
+        return {"price": self._convert_price(total_price)}
+
 
 class HighestPriceHourSensor(EnergyHubSensorEntity):
     """Sensor for the hour with the highest energy price (RCE)."""
 
-    _attr_icon = "mdi:clock-alert-outline"
+    _attr_icon = ICONS.get("highest_price_hour")
     _attr_state_class = None
 
     def __init__(
@@ -602,13 +720,14 @@ class HighestPriceHourSensor(EnergyHubSensorEntity):
         if not self.coordinator.data:
             return {}
         price = self.coordinator.data.get(f"{self._day}_max_price")
-        return {"price": self._convert_price(price)}
+        total_price = self._calculate_total_price(price, "dynamic")
+        return {"price": self._convert_price(total_price)}
 
 
 class KSELoadSensor(EnergyHubSensorEntity):
     """Sensor for KSE energy load (zapotrzebowanie)."""
 
-    _attr_icon = "mdi:transmission-tower"
+    _attr_icon = ICONS.get("kse_load")
     _attr_native_unit_of_measurement = "MW"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -640,7 +759,7 @@ class KSELoadSensor(EnergyHubSensorEntity):
 class KSEGenerationSensor(EnergyHubSensorEntity):
     """Sensor for KSE energy generation (OZE)."""
 
-    _attr_icon = "mdi:solar-power-variant"
+    _attr_icon = ICONS.get("kse_generation")
     _attr_native_unit_of_measurement = "MW"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT

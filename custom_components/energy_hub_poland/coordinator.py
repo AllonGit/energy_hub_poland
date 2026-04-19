@@ -12,7 +12,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .api import EnergyHubApiClient, PSEApiClient
-from .const import DOMAIN
+from .const import (
+    DEFAULT_UPDATE_INTERVAL_MINUTES,
+    DOMAIN,
+    ERROR_BACKOFF_INTERVAL_MINUTES,
+    ERROR_BACKOFF_THRESHOLD,
+)
 
 _LOGGER = logging.getLogger(__package__)
 
@@ -32,7 +37,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=5),
+            update_interval=timedelta(minutes=DEFAULT_UPDATE_INTERVAL_MINUTES),
         )
         self.api_client = EnergyHubApiClient(async_get_clientsession(hass))
         self.pse_client = PSEApiClient(async_get_clientsession(hass))
@@ -55,12 +60,43 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.last_update_time: datetime | None = None
         self.api_connected: bool = True
         self._error_count: int = 0
+        self._last_tomorrow_event_date: date | None = None
         self.costs: dict[str, float] = dict.fromkeys(
             ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
         )
         self.last_reset: datetime = dt_util.now().replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
+
+    def _adjust_update_interval(self) -> None:
+        """Adjust the coordinator update interval after repeated failures."""
+        normal_interval = timedelta(minutes=DEFAULT_UPDATE_INTERVAL_MINUTES)
+        backoff_interval = timedelta(minutes=ERROR_BACKOFF_INTERVAL_MINUTES)
+
+        if self._error_count >= ERROR_BACKOFF_THRESHOLD:
+            if self.update_interval != backoff_interval:
+                _LOGGER.warning(
+                    "Multiple PSE failures detected, backing off updates to %s minutes",
+                    ERROR_BACKOFF_INTERVAL_MINUTES,
+                )
+                self.update_interval = backoff_interval
+        elif self.update_interval != normal_interval:
+            _LOGGER.debug(
+                "Restoring normal update interval to %s minutes",
+                DEFAULT_UPDATE_INTERVAL_MINUTES,
+            )
+            self.update_interval = normal_interval
+
+    async def _fetch_data(self, fetch_date: date) -> dict[int, float] | None:
+        """Fetch and parse price data from PGE (wrapper for tests)."""
+        api_query_date = fetch_date - timedelta(days=1)
+        raw_data = await self.api_client.async_get_prices(api_query_date)
+        prices = self._parse_prices(raw_data)
+
+        if prices is not None:
+            self.last_update_time = dt_util.utcnow()
+
+        return prices
 
     async def _fetch_pge_prices(self, fetch_date: date) -> dict[int, float] | None:
         """Fetch and parse price data from PGE DataHub (fallback)."""
@@ -128,16 +164,30 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     if tomorrow_prices[h] is None:
                         tomorrow_prices[h] = pge_prices.get(h)
 
+        tomorrow_published = False
         if any(v is not None for v in tomorrow_prices.values()):
             self._internal_data["tomorrow"] = {
                 h: v for h, v in tomorrow_prices.items() if v is not None
             }
             self._internal_data["tomorrow_date"] = tomorrow_date
+            if tomorrow_date != self._last_tomorrow_event_date:
+                tomorrow_published = True
+                self._last_tomorrow_event_date = tomorrow_date
+
+        if tomorrow_published:
+            self.hass.bus.async_fire(
+                "energy_hub_poland_tomorrow_prices_published",
+                {
+                    "tomorrow_date": tomorrow_date.isoformat(),
+                    "tomorrow_price_count": len(self._internal_data["tomorrow"] or {}),
+                    "tomorrow_prices": self._internal_data["tomorrow"],
+                },
+            )
 
     def _parse_pse_prices(
         self, rce_data: list | None, forecast_data: list | None
     ) -> dict[tuple[date, int], float]:
-        """Parse PSE RCE and Forecast data, picking the minimum per hour."""
+        """Parse PSE RCE and Forecast data, averaging all values per hour."""
         hourly_actuals: dict[tuple[date, int], list[float]] = {}
         hourly_forecasts: dict[tuple[date, int], list[float]] = {}
 
@@ -168,23 +218,32 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             for item in rce_data:
                 add_to_raw(item["dtime"], item.get("rce_pln"), hourly_actuals)
 
+        def average(values: list[float]) -> float:
+            return sum(values) / len(values)
+
         result: dict[tuple[date, int], float] = {}
         # Combine keys from both
         all_keys = set(hourly_actuals.keys()) | set(hourly_forecasts.keys())
 
         for key in all_keys:
-            # If we have actuals for this hour, use them (minimum of the actuals)
+            # If we have actuals for this hour, average them
             if key in hourly_actuals:
-                result[key] = min(hourly_actuals[key])
-            # Otherwise use forecasts
+                result[key] = average(hourly_actuals[key])
+            # Otherwise average forecasts
             else:
-                result[key] = min(hourly_forecasts[key])
+                result[key] = average(hourly_forecasts[key])
 
         return result
 
     @callback
     def async_update_costs(self, delta: float, prices: dict[str, float]) -> None:
         """Update accumulated costs with a new energy increment."""
+        # Check for legacy costs and migrate if necessary
+        legacy_keys = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        for key in legacy_keys:
+            if key not in self.costs:
+                self.costs[key] = 0.0
+
         for tariff, price in prices.items():
             if price is not None:
                 self.costs[tariff] += delta * price
@@ -245,8 +304,12 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 await self._update_pse_prices(today_date)
                 self._internal_data["last_price_update"] = now
                 self.last_update_time = now
+                self._error_count = 0
             except Exception as e:
                 _LOGGER.error("Failed to update PSE prices: %s", e)
+                self._error_count += 1
+
+        self._adjust_update_interval()
 
         # Handle day transition (midnight)
         if (
@@ -407,7 +470,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         item = {}
         try:
             for item in raw_data:
-                # API returns timestamps in UTC. We convert them to Polish local time
+                # API returns timestamps in UTC.  convert them to Polish local time
                 # to correctly map prices to Polish hour intervals (0-23).
                 date_time = item.get("date_time")
                 if not date_time:
@@ -443,6 +506,15 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     if attr["name"] == "price":
                         price_val = float(attr["value"])
                         break
+
+                # Additional validation: check price range
+                if not (0 <= price_val <= 10000):  # Reasonable range for PLN/MWh
+                    _LOGGER.warning(
+                        "Invalid price value: %s for hour %d. Skipping record.",
+                        price_val,
+                        hour,
+                    )
+                    continue
 
                 prices[hour] = round(price_val / 1000, 4)  # Convert PLN/MWh to PLN/kWh
         except (ValueError, KeyError, TypeError) as e:

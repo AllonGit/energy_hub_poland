@@ -12,6 +12,7 @@
         "title": "Advanced Settings",
         "description": "Configure additional options for the integration.",
         "data": {
+          "vat_rate": "VAT Rate",
           "price_unit": "Price unit",
           "provider": "Energy provider (prefills hours)",
           "spike_threshold": "Price spike threshold (%)"
@@ -21,7 +22,8 @@
         "title": "G11 Tariff Configuration",
         "description": "Enter your G11 flat rate.",
         "data": {
-          "price_peak": "Flat price (PLN/kWh)"
+          "price_peak": "Flat price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)"
         }
       },
       "g12_config": {
@@ -30,6 +32,7 @@
         "data": {
           "price_peak": "Peak price (PLN/kWh)",
           "price_offpeak": "Off-peak price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)",
           "hours_peak_summer": "Peak hours - SUMMER (e.g., 6-13,15-22)",
           "hours_peak_winter": "Peak hours - WINTER (e.g., 6-13,15-22)"
         }
@@ -40,6 +43,7 @@
         "data": {
           "price_peak": "Peak price (PLN/kWh)",
           "price_offpeak": "Off-peak price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)",
           "hours_peak_summer": "Peak hours - SUMMER (e.g., 6-13,15-22)",
           "hours_peak_winter": "Peak hours - WINTER (e.g., 6-13,15-22)"
         }
@@ -49,7 +53,8 @@
         "description": "Enter G12n rates. Night/off-peak windows and Sundays/Holidays are pre-configured.",
         "data": {
           "price_peak": "Day price (PLN/kWh)",
-          "price_offpeak": "Night price (PLN/kWh)"
+          "price_offpeak": "Night price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)"
         }
       },
       "g13_config": {
@@ -59,10 +64,32 @@
           "price_peak_1": "Peak 1 price (PLN/kWh)",
           "price_peak_2": "Peak 2 price (PLN/kWh)",
           "price_offpeak": "Other (Off-peak) price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)",
           "hours_peak_1_summer": "Peak 1 - SUMMER",
           "hours_peak_2_summer": "Peak 2 - SUMMER",
           "hours_peak_1_winter": "Peak 1 - WINTER",
           "hours_peak_2_winter": "Peak 2 - WINTER"
+        }
+      },
+      "tariff_selection": {
+        "title": "Tariff selection for comparison",
+        "description": "Select the tariffs you want to compare. Some tariffs may not be available from your provider.",
+        "data": {
+          "dynamic": "Dynamic tariff (RCE)",
+          "g11": "G11 tariff",
+          "g12": "G12 tariff",
+          "g12w": "G12w tariff",
+          "g12n": "G12n tariff",
+          "g13": "G13 tariff"
+        }
+      },
+      "network_fees_config": {
+        "title": "Network fees configuration",
+        "description": "Enter network fees to include them in the price comparison.",
+        "data": {
+          "network_fixed_fee": "Fixed network fee (PLN/month)",
+          "network_variable_fee": "Default variable network fee (PLN/kWh)",
+          "network_variable_fee_dynamic": "Dynamic tariff (RCE) variable network fee (PLN/kWh)"
         }
       },
       "energy_sensor": {
@@ -90,24 +117,33 @@
         "title": "Change Energy Hub Settings",
         "description": "Update your tariff settings or change the energy consumption sensor.",
         "data": {
+          "vat_rate": "VAT Rate",
+          "network_fixed_fee": "Fixed network fee (PLN/month)",
+          "network_variable_fee": "Default variable network fee (PLN/kWh)",
+          "network_variable_fee_dynamic": "Dynamic (RCE) variable network fee",
           "energy_sensor": "Energy consumption sensor",
           "sensor_type": "Consumption sensor type",
           "price_unit": "Price unit",
           "spike_threshold": "Price spike threshold (%)",
           "g11_settings_price_peak": "G11 - Price",
+          "g11_settings_network_variable_fee": "G11 - Variable network fee",
           "g12_settings_price_peak": "G12 - Peak price",
           "g12_settings_price_offpeak": "G12 - Off-peak price",
+          "g12_settings_network_variable_fee": "G12 - Variable network fee",
           "g12_settings_hours_peak_summer": "G12 - Peak hours SUMMER",
           "g12_settings_hours_peak_winter": "G12 - Peak hours WINTER",
           "g12w_settings_price_peak": "G12w - Peak price",
           "g12w_settings_price_offpeak": "G12w - Off-peak price",
+          "g12w_settings_network_variable_fee": "G12w - Variable network fee",
           "g12w_settings_hours_peak_summer": "G12w - Peak hours SUMMER",
           "g12w_settings_hours_peak_winter": "G12w - Peak hours WINTER",
           "g12n_settings_price_peak": "G12n - Day price",
           "g12n_settings_price_offpeak": "G12n - Night price",
+          "g12n_settings_network_variable_fee": "G12n - Variable network fee",
           "g13_settings_price_peak_1": "G13 - Peak 1 price",
           "g13_settings_price_peak_2": "G13 - Peak 2 price",
-          "g13_settings_price_offpeak": "G13 - Other price"
+          "g13_settings_price_offpeak": "G13 - Other price",
+          "g13_settings_network_variable_fee": "G13 - Variable network fee"
         }
       }
     }
@@ -145,6 +181,13 @@
         "energa": "Energa",
         "stoen": "Stoen"
       }
+    },
+    "vat_rate": {
+      "options": {
+        "0": "0%",
+        "5": "5%",
+        "23": "23%"
+      }
     }
   },
   "entity": {
@@ -159,36 +202,168 @@
           "g12n": "G12n Tariff",
           "g13": "G13 Tariff",
           "brak_danych": "No data"
+        },
+        "state_attributes": {
+          "costs": {
+            "name": "Estimated costs"
+          },
+          "savings_g11_vs_dynamic": {
+            "name": "Savings G11 vs Dynamic"
+          },
+          "savings_g12_vs_dynamic": {
+            "name": "Savings G12 vs Dynamic"
+          },
+          "savings_g12w_vs_dynamic": {
+            "name": "Savings G12w vs Dynamic"
+          },
+          "savings_g12n_vs_dynamic": {
+            "name": "Savings G12n vs Dynamic"
+          },
+          "savings_g13_vs_dynamic": {
+            "name": "Savings G13 vs Dynamic"
+          }
         }
       },
-      "current_price_dynamic": { "name": "Current price DYNAMIC" },
-      "current_price_g11": { "name": "Current price G11" },
-      "current_price_g12": { "name": "Current price G12" },
-      "current_price_g12w": { "name": "Current price G12w" },
-      "current_price_g12n": { "name": "Current price G12n" },
-      "current_price_g13": { "name": "Current price G13" },
-      "min_price_today": { "name": "Minimum price today" },
-      "max_price_today": { "name": "Maximum price today" },
-      "avg_price_today": { "name": "Average price today" },
-      "min_price_tomorrow": { "name": "Minimum price tomorrow" },
-      "max_price_tomorrow": { "name": "Maximum price tomorrow" },
-      "avg_price_tomorrow": { "name": "Average price tomorrow" },
-      "lowest_price_hour_today": { "name": "Lowest price hour today" },
-      "lowest_price_hour_tomorrow": { "name": "Lowest price hour tomorrow" },
-      "highest_price_hour_today": { "name": "Highest price hour today" },
-      "highest_price_hour_tomorrow": { "name": "Highest price hour tomorrow" },
-      "kse_load": { "name": "KSE: Energy Load" },
-      "kse_generation": { "name": "KSE: OZE Generation" },
-      "cost_dynamic": { "name": "Cost - Dynamic" },
-      "cost_g11": { "name": "Cost - G11" },
-      "cost_g12": { "name": "Cost - G12" },
-      "cost_g12w": { "name": "Cost - G12w" },
-      "cost_g12n": { "name": "Cost - G12n" },
-      "cost_g13": { "name": "Cost - G13" }
+      "current_price_dynamic": {
+        "name": "Current price DYNAMIC",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          },
+          "today_prices": {
+            "name": "Today's prices"
+          },
+          "tomorrow_prices": {
+            "name": "Tomorrow's prices"
+          },
+          "today_average": {
+            "name": "Today's average"
+          }
+        }
+      },
+      "current_price_g11": {
+        "name": "Current price G11",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "current_price_g12": {
+        "name": "Current price G12",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "current_price_g12w": {
+        "name": "Current price G12w",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "current_price_g12n": {
+        "name": "Current price G12n",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "current_price_g13": {
+        "name": "Current price G13",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "min_price_today": {
+        "name": "Minimum price today"
+      },
+      "max_price_today": {
+        "name": "Maximum price today"
+      },
+      "avg_price_today": {
+        "name": "Average price today"
+      },
+      "min_price_tomorrow": {
+        "name": "Minimum price tomorrow"
+      },
+      "max_price_tomorrow": {
+        "name": "Maximum price tomorrow"
+      },
+      "avg_price_tomorrow": {
+        "name": "Average price tomorrow"
+      },
+      "lowest_price_hour_today": {
+        "name": "Lowest price hour today"
+      },
+      "lowest_price_hour_tomorrow": {
+        "name": "Lowest price hour tomorrow"
+      },
+      "highest_price_hour_today": {
+        "name": "Highest price hour today"
+      },
+      "highest_price_hour_tomorrow": {
+        "name": "Highest price hour tomorrow"
+      },
+      "kse_load": {
+        "name": "KSE: Energy Load"
+      },
+      "kse_generation": {
+        "name": "KSE: OZE Generation"
+      },
+      "cost_dynamic": {
+        "name": "Cost - Dynamic"
+      },
+      "cost_g11": {
+        "name": "Cost - G11"
+      },
+      "cost_g12": {
+        "name": "Cost - G12"
+      },
+      "cost_g12w": {
+        "name": "Cost - G12w"
+      },
+      "cost_g12n": {
+        "name": "Cost - G12n"
+      },
+      "cost_g13": {
+        "name": "Cost - G13"
+      }
     },
     "binary_sensor": {
-      "api_status": { "name": "API connection status" },
-      "price_spike": { "name": "Price spike" }
+      "api_status": {
+        "name": "API connection status"
+      },
+      "price_spike": {
+        "name": "Price spike"
+      },
+      "negative_price": {
+        "name": "Negative prices"
+      }
     }
   }
 }

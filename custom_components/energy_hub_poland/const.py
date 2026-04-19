@@ -1,11 +1,22 @@
 """Constants for the Energy Hub Poland integration."""
 
+import json
+from pathlib import Path
+
 DOMAIN = "energy_hub_poland"
 API_URL = "https://datahub.gkpge.pl/api/tge/quote"
 PSE_API_URL = "https://api.raporty.pse.pl/api"
 
+ICON_FILE = Path(__file__).with_name("icons.json")
+try:
+    with open(ICON_FILE, encoding="utf-8") as icon_file:
+        ICONS = json.load(icon_file)
+except Exception:
+    ICONS = {}
+
 # Configuration keys
 CONF_OPERATION_MODE = "operation_mode"
+CONF_VAT_RATE = "vat_rate"
 CONF_ENERGY_SENSOR = "energy_sensor"
 CONF_SENSOR_TYPE = "sensor_type"
 CONF_G11_SETTINGS = "g11_settings"
@@ -43,9 +54,29 @@ MODE_G12N = "g12n"
 MODE_G13 = "g13"
 MODE_COMPARISON = "comparison"
 
+# Enabled tariffs
+CONF_ENABLED_TARIFFS = "enabled_tariffs"
+
+# Network fees
+CONF_NETWORK_FIXED_FEE = "network_fixed_fee"
+CONF_NETWORK_VARIABLE_FEE = "network_variable_fee"  # Global fallback
+
+# Per-tariff network variable fees (for accurate comparisons)
+CONF_NETWORK_VARIABLE_FEE_DYNAMIC = "network_variable_fee_dynamic"
+CONF_NETWORK_VARIABLE_FEE_G11 = "network_variable_fee_g11"
+CONF_NETWORK_VARIABLE_FEE_G12 = "network_variable_fee_g12"
+CONF_NETWORK_VARIABLE_FEE_G12W = "network_variable_fee_g12w"
+CONF_NETWORK_VARIABLE_FEE_G12N = "network_variable_fee_g12n"
+CONF_NETWORK_VARIABLE_FEE_G13 = "network_variable_fee_g13"
+
 # Units
 UNIT_KWH = "kwh"
 UNIT_MWH = "mwh"
+
+# Update interval tuning
+DEFAULT_UPDATE_INTERVAL_MINUTES = 5
+ERROR_BACKOFF_THRESHOLD = 3
+ERROR_BACKOFF_INTERVAL_MINUTES = 15
 
 # Compatibility with tests
 CONF_UNIT_TYPE = CONF_PRICE_UNIT

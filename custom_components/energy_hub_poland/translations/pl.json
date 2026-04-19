@@ -12,6 +12,7 @@
         "title": "Ustawienia zaawansowane",
         "description": "Skonfiguruj dodatkowe opcje integracji.",
         "data": {
+          "vat_rate": "Stawka VAT",
           "price_unit": "Jednostka ceny",
           "provider": "Dostawca energii (uzupełnia godziny)",
           "spike_threshold": "Próg skoku ceny (%)"
@@ -21,7 +22,8 @@
         "title": "Konfiguracja taryfy G11",
         "description": "Wprowadź stałą stawkę dla taryfy G11.",
         "data": {
-          "price_peak": "Cena stała (PLN/kWh)"
+          "price_peak": "Cena stała (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)"
         }
       },
       "g12_config": {
@@ -30,6 +32,7 @@
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)",
           "hours_peak_summer": "Godziny szczytu - LATO (np. 6-13,15-22)",
           "hours_peak_winter": "Godziny szczytu - ZIMA (np. 6-13,15-22)"
         }
@@ -40,6 +43,7 @@
         "data": {
           "price_peak": "Cena w szczycie (PLN/kWh)",
           "price_offpeak": "Cena poza szczytem (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)",
           "hours_peak_summer": "Godziny szczytu - LATO (np. 6-13,15-22)",
           "hours_peak_winter": "Godziny szczytu - ZIMA (np. 6-13,15-22)"
         }
@@ -49,7 +53,8 @@
         "description": "Wprowadź stawki dla G12n. Okna nocne oraz niedziele/święta są skonfigurowane automatycznie.",
         "data": {
           "price_peak": "Cena dzień (PLN/kWh)",
-          "price_offpeak": "Cena noc (PLN/kWh)"
+          "price_offpeak": "Cena noc (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)"
         }
       },
       "g13_config": {
@@ -59,10 +64,32 @@
           "price_peak_1": "Cena Szczyt 1 (PLN/kWh)",
           "price_peak_2": "Cena Szczyt 2 (PLN/kWh)",
           "price_offpeak": "Cena Pozostałe (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)",
           "hours_peak_1_summer": "Szczyt 1 - LATO",
           "hours_peak_2_summer": "Szczyt 2 - LATO",
           "hours_peak_1_winter": "Szczyt 1 - ZIMA",
           "hours_peak_2_winter": "Szczyt 2 - ZIMA"
+        }
+      },
+      "tariff_selection": {
+        "title": "Wybór taryf do porównania",
+        "description": "Wybierz taryfy, które chcesz porównywać. Niektóre taryfy mogą nie być dostępne u Twojego dostawcy.",
+        "data": {
+          "dynamic": "Taryfa dynamiczna (RCE)",
+          "g11": "Taryfa G11",
+          "g12": "Taryfa G12",
+          "g12w": "Taryfa G12w",
+          "g12n": "Taryfa G12n",
+          "g13": "Taryfa G13"
+        }
+      },
+      "network_fees_config": {
+        "title": "Konfiguracja opłat sieciowych",
+        "description": "Wprowadź opłaty sieciowe, aby uwzględnić je w porównaniu cen.",
+        "data": {
+          "network_fixed_fee": "Opłata stała sieciowa (PLN/miesiąc)",
+          "network_variable_fee": "Domyślna opłata zmienna sieciowa (PLN/kWh)",
+          "network_variable_fee_dynamic": "Opłata zmienna sieciowa taryfy dynamicznej (PLN/kWh)"
         }
       },
       "energy_sensor": {
@@ -90,24 +117,33 @@
         "title": "Zmień ustawienia Energy Hub",
         "description": "Zaktualizuj ustawienia taryfy lub zmień sensor zużycia energii.",
         "data": {
+          "vat_rate": "Stawka VAT",
+          "network_fixed_fee": "Opłata stała sieciowa (PLN/miesiąc)",
+          "network_variable_fee": "Domyślna opłata zmienna sieciowa (PLN/kWh)",
+          "network_variable_fee_dynamic": "Opłata zmienna sieciowa - Dynamiczna",
           "energy_sensor": "Sensor zużycia energii",
           "sensor_type": "Typ sensora zużycia",
           "price_unit": "Jednostka ceny",
           "spike_threshold": "Próg skoku ceny (%)",
           "g11_settings_price_peak": "G11 - Cena",
+          "g11_settings_network_variable_fee": "G11 - Opłata zmienna sieciowa",
           "g12_settings_price_peak": "G12 - Cena szczyt",
           "g12_settings_price_offpeak": "G12 - Cena poza szczytem",
+          "g12_settings_network_variable_fee": "G12 - Opłata zmienna sieciowa",
           "g12_settings_hours_peak_summer": "G12 - Godziny szczytu LATO",
           "g12_settings_hours_peak_winter": "G12 - Godziny szczytu ZIMA",
           "g12w_settings_price_peak": "G12w - Cena szczyt",
           "g12w_settings_price_offpeak": "G12w - Cena poza szczytem",
+          "g12w_settings_network_variable_fee": "G12w - Opłata zmienna sieciowa",
           "g12w_settings_hours_peak_summer": "G12w - Godziny szczytu LATO",
           "g12w_settings_hours_peak_winter": "G12w - Godziny szczytu ZIMA",
           "g12n_settings_price_peak": "G12n - Cena dzień",
           "g12n_settings_price_offpeak": "G12n - Cena noc",
+          "g12n_settings_network_variable_fee": "G12n - Opłata zmienna sieciowa",
           "g13_settings_price_peak_1": "G13 - Cena Szczyt 1",
           "g13_settings_price_peak_2": "G13 - Cena Szczyt 2",
-          "g13_settings_price_offpeak": "G13 - Cena Pozostałe"
+          "g13_settings_price_offpeak": "G13 - Cena Pozostałe",
+          "g13_settings_network_variable_fee": "G13 - Opłata zmienna sieciowa"
         }
       }
     }
@@ -142,6 +178,13 @@
         "energa": "Energa",
         "stoen": "Stoen"
       }
+    },
+    "vat_rate": {
+      "options": {
+        "0": "0%",
+        "5": "5%",
+        "23": "23%"
+      }
     }
   },
   "entity": {
@@ -156,36 +199,168 @@
           "g12n": "Taryfa G12n",
           "g13": "Taryfa G13",
           "brak_danych": "Brak danych"
+        },
+        "state_attributes": {
+          "costs": {
+            "name": "Szacowane koszty"
+          },
+          "savings_g11_vs_dynamic": {
+            "name": "Oszczędność G11 vs Dynamiczna"
+          },
+          "savings_g12_vs_dynamic": {
+            "name": "Oszczędność G12 vs Dynamiczna"
+          },
+          "savings_g12w_vs_dynamic": {
+            "name": "Oszczędność G12w vs Dynamiczna"
+          },
+          "savings_g12n_vs_dynamic": {
+            "name": "Oszczędność G12n vs Dynamiczna"
+          },
+          "savings_g13_vs_dynamic": {
+            "name": "Oszczędność G13 vs Dynamiczna"
+          }
         }
       },
-      "current_price_dynamic": { "name": "Aktualna cena DYNAMICZNA" },
-      "current_price_g11": { "name": "Aktualna cena G11" },
-      "current_price_g12": { "name": "Aktualna cena G12" },
-      "current_price_g12w": { "name": "Aktualna cena G12w" },
-      "current_price_g12n": { "name": "Aktualna cena G12n" },
-      "current_price_g13": { "name": "Aktualna cena G13" },
-      "min_price_today": { "name": "Minimalna cena dziś" },
-      "max_price_today": { "name": "Maksymalna cena dziś" },
-      "avg_price_today": { "name": "Średnia cena dziś" },
-      "min_price_tomorrow": { "name": "Minimalna cena jutro" },
-      "max_price_tomorrow": { "name": "Maksymalna cena jutro" },
-      "avg_price_tomorrow": { "name": "Średnia cena jutro" },
-      "lowest_price_hour_today": { "name": "Godzina najniższej ceny dziś" },
-      "lowest_price_hour_tomorrow": { "name": "Godzina najniższej ceny jutro" },
-      "highest_price_hour_today": { "name": "Godzina najwyższej ceny dziś" },
-      "highest_price_hour_tomorrow": { "name": "Godzina najwyższej ceny jutro" },
-      "kse_load": { "name": "KSE: Zapotrzebowanie" },
-      "kse_generation": { "name": "KSE: Generacja OZE" },
-      "cost_dynamic": { "name": "Koszt - Dynamiczna" },
-      "cost_g11": { "name": "Koszt - G11" },
-      "cost_g12": { "name": "Koszt - G12" },
-      "cost_g12w": { "name": "Koszt - G12w" },
-      "cost_g12n": { "name": "Koszt - G12n" },
-      "cost_g13": { "name": "Koszt - G13" }
+      "current_price_dynamic": {
+        "name": "Aktualna cena DYNAMICZNA",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          },
+          "today_prices": {
+            "name": "Ceny dzisiejsze"
+          },
+          "tomorrow_prices": {
+            "name": "Ceny jutrzejsze"
+          },
+          "today_average": {
+            "name": "Średnia cena dziś"
+          }
+        }
+      },
+      "current_price_g11": {
+        "name": "Aktualna cena G11",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "current_price_g12": {
+        "name": "Aktualna cena G12",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "current_price_g12w": {
+        "name": "Aktualna cena G12w",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "current_price_g12n": {
+        "name": "Aktualna cena G12n",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "current_price_g13": {
+        "name": "Aktualna cena G13",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "min_price_today": {
+        "name": "Minimalna cena dziś"
+      },
+      "max_price_today": {
+        "name": "Maksymalna cena dziś"
+      },
+      "avg_price_today": {
+        "name": "Średnia cena dziś"
+      },
+      "min_price_tomorrow": {
+        "name": "Minimalna cena jutro"
+      },
+      "max_price_tomorrow": {
+        "name": "Maksymalna cena jutro"
+      },
+      "avg_price_tomorrow": {
+        "name": "Średnia cena jutro"
+      },
+      "lowest_price_hour_today": {
+        "name": "Godzina najniższej ceny dziś"
+      },
+      "lowest_price_hour_tomorrow": {
+        "name": "Godzina najniższej ceny jutro"
+      },
+      "highest_price_hour_today": {
+        "name": "Godzina najwyższej ceny dziś"
+      },
+      "highest_price_hour_tomorrow": {
+        "name": "Godzina najwyższej ceny jutro"
+      },
+      "kse_load": {
+        "name": "KSE: Zapotrzebowanie"
+      },
+      "kse_generation": {
+        "name": "KSE: Generacja OZE"
+      },
+      "cost_dynamic": {
+        "name": "Koszt - Dynamiczna"
+      },
+      "cost_g11": {
+        "name": "Koszt - G11"
+      },
+      "cost_g12": {
+        "name": "Koszt - G12"
+      },
+      "cost_g12w": {
+        "name": "Koszt - G12w"
+      },
+      "cost_g12n": {
+        "name": "Koszt - G12n"
+      },
+      "cost_g13": {
+        "name": "Koszt - G13"
+      }
     },
     "binary_sensor": {
-      "api_status": { "name": "Status połączenia API" },
-      "price_spike": { "name": "Skok ceny" }
+      "api_status": {
+        "name": "Status połączenia API"
+      },
+      "price_spike": {
+        "name": "Skok ceny"
+      },
+      "negative_price": {
+        "name": "Ceny ujemne"
+      }
     }
   }
 }

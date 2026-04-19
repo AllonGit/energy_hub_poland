@@ -1,0 +1,10 @@
+{
+    "recommendation": "mdi:lightbulb-auto",
+    "kse_load": "mdi:transmission-tower",
+    "kse_generation": "mdi:solar-power-variant",
+    "price_spike": "mdi:chart-line-variant",
+    "negative_price": "mdi:currency-pln-circle",
+    "api_status": "mdi:cloud-check",
+    "lowest_price_hour": "mdi:clock-outline",
+    "highest_price_hour": "mdi:clock-alert-outline"
+}

@@ -19,6 +19,7 @@ from .const import (
     CONF_OPERATION_MODE,
     CONF_SPIKE_THRESHOLD,
     DOMAIN,
+    ICONS,
     MODE_DYNAMIC,
 )
 from .coordinator import EnergyHubDataCoordinator
@@ -43,9 +44,10 @@ async def async_setup_entry(
     # API Status is a diagnostic sensor available in all modes
     entities = [ApiStatusBinarySensor(coordinator, entry)]
 
-    # Price Spike binary sensor is only available in RCE (Dynamic) mode
+    # Price Spike and Negative Price sensors are available in RCE (Dynamic) mode
     if mode == MODE_DYNAMIC:
         entities.append(PriceSpikeBinarySensor(coordinator, entry))
+        entities.append(NegativePriceBinarySensor(coordinator, entry))
 
     async_add_entities(entities, update_before_add=True)
 
@@ -63,6 +65,7 @@ class ApiStatusBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
         super().__init__(coordinator, entry)
         self._attr_translation_key = "api_status"
         self._attr_unique_id = f"api_status_{entry.entry_id}"
+        self._attr_icon = ICONS.get("api_status")
 
     @property
     def is_on(self) -> bool:
@@ -113,3 +116,27 @@ class PriceSpikeBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
             return current_price > 0
 
         return current_price > today_avg * (1 + threshold / 100)
+
+
+class NegativePriceBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
+    """Binary sensor that turns ON when the dynamic price is negative."""
+
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+
+    def __init__(
+        self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "negative_price"
+        self._attr_unique_id = f"negative_price_{entry.entry_id}"
+        self._attr_icon = ICONS.get("negative_price")
+
+    @property
+    def is_on(self) -> bool:
+        if not self.coordinator.data:
+            return False
+        now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+        current_price = self.coordinator.data.get("today", {}).get(poland_now.hour)
+        return current_price is not None and current_price < 0

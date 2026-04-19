@@ -1,0 +1,10 @@
+energy_hub_poland:
+  update_prices:
+    name: Update prices
+    description: Force an immediate update of the energy prices from PSE/TGE API.
+    fields:
+      entry_id:
+        name: Config entry
+        description: The configuration entry ID for the Energy Hub integration (optional).
+        required: false
+        example: "a1b2c3d4e5f6"
