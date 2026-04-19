@@ -1,15 +1,18 @@
 # ⚡ Energy Hub Poland
 ## Your intelligent energy cost assistant for Home Assistant
 
-![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=flat-square&color=blue)
-![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=flat-square&color=green)
-![HACS](https://img.shields.io/badge/HACS-Custom-orange?style=flat-square)
-![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=flat-square)
+![GitHub Release](https://img.shields.io/github/v/release/AllonGit/energy_hub_poland?style=for-the-badge&color=blue)
+![License](https://img.shields.io/github/license/AllonGit/energy_hub_poland?style=for-the-badge&color=green)
+![HACS](https://img.shields.io/badge/HACS-Default-blue?style=for-the-badge)
+![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg?style=for-the-badge)
+![GitHub stars](https://img.shields.io/github/stars/AllonGit/energy_hub_poland?style=social)
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=AllonGit&repository=energy_hub_poland&category=integration)
 
+**For the Polish version click [here](README.md)**
+
 <p align="center">
-  <img src="custom_components/energy_hub_poland/brands/dark_icon@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="custom_components/energy_hub_poland/brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---
@@ -45,16 +48,38 @@ The integration's most powerful feature.
 
 ---
 
+### 🆕 What's New (Version 1.3.1)
+
+**Enhanced API Reliability:** Added automatic retry logic for connection errors and monitoring of API response schema changes from PSE/TGE.
+
+**Configuration Validation:** All prices must be greater than 0, and distribution fees cannot be negative – prevents configuration errors.
+
+**Complete Translations:** Added missing translations for all configuration options in English and Polish.
+
+**VAT Support:** Added automatic VAT calculation (0%, 5%, 23%) for energy prices.
+
+**Network Fees:** Introduced configuration for distribution fees (fixed and variable) for all tariffs, enabling real "bill-like" cost comparisons.
+
+**Tariff Selection:** Users can now choose which tariffs to compare in Comparison Mode.
+
+**New Sensors:** Added binary sensor for negative price detection and service for manual price refresh.
+
+**Smart Backoff:** In case of repeated API errors, update interval is automatically increased to reduce load.
+
+**Average Prices:** For better accuracy, hourly prices are now calculated as averages from all 15-minute intervals in the hour.
+
+**New Files and Structure:** Added `tariffs.py` for better tariff code organization, `icons.json` with sensor icons, and `services.yaml` with integration services.
+
+---
+
 ## 🚀 Installation
 
 ### Step 1: Installation via HACS
 
 1. Open **HACS** in Home Assistant.
-2. Click the menu (three dots) in the top right corner and select **Custom repositories**.
-3. Paste the URL: `https://github.com/AllonGit/energy_hub_poland`.
-4. Select type: **Integration**.
-5. Click **Download**.
-6. **Restart Home Assistant**.
+2. Search for `Energy Hub Poland`.
+3. Click **Download**.
+4. **Restart Home Assistant**.
 
 ### Step 2: Configuration
 

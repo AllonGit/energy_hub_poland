@@ -29,6 +29,8 @@ Integracja obsługuje cztery główne tryby operacyjne:
 Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
 * Idealny dla prosumentów na zasadach net-billing.
 * Prezentuje ceny netto (bez VAT i opłat dystrybucyjnych).
+* Możliwość doliczenia **opłat dystrybucyjnych** (stałych i zmiennych).
+* Opcjonalne automatyczne doliczanie **23% VAT**.
 
 ### 2. 🏠 Tryb G12
 Klasyczna taryfa dwustrefowa zdefiniowana przez użytkownika.
@@ -43,6 +45,7 @@ Rozszerzona taryfa dwustrefowa, uwzględniająca polski kalendarz świąt.
 ### 4. 📊 Tryb Porównania (Eksperymentalny)
 Najpotężniejsza funkcja integracji.
 * Oblicza koszty zużycia energii dla **wszystkich trzech taryf jednocześnie** w czasie rzeczywistym.
+* Uwzględnia zdefiniowane opłaty sieciowe, pozwalając na realne porównanie kosztów "z rachunku".
 * Wskazuje potencjalne oszczędności przy zmianie taryfy.
 * Wymaga podłączenia licznika energii (encyja `kWh`, typ `total_increasing`).
 
@@ -66,16 +69,28 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-### 🆕 Co nowego (Wersja 1.3.0)
-**Oficjalne API PSE:** Głównym źródłem danych stały się teraz bezpośrednie raporty Polskich Sieci Elektroenergetycznych (raporty.pse.pl).
+### 🆕 Co nowego (Wersja 1.3.1)
 
-**Logika "Najtańszego Kwadransa":** PSE publikuje ceny RCE w interwałach 15-minutowych. Integracja automatycznie analizuje wszystkie kwadranse w danej godzinie i wybiera z nich najniższą stawkę, co najczęściej odpowiada notowaniom Fixing 1.
-Nowe Sensory Systemu KSE:
+**Ulepszona niezawodność API:** Dodano automatyczne ponawianie prób w przypadku błędów połączenia oraz monitorowanie zmian w strukturze odpowiedzi API PSE/TGE.
 
-* **KSE Zapotrzebowanie:** Monitoruj w czasie rzeczywistym aktualne i prognozowane obciążenie krajowego systemu elektroenergetycznego (w MW).
-* **KSE Generacja OZE:** Śledź produkcję energii z Farm Wiatrowych oraz Fotowoltaiki (PV) w skali całego kraju.
-* **Inteligentny Fallback (PGE Datahub):** W przypadku awarii serwerów PSE, integracja automatycznie przełącza się na zapasowe źródło (PGE DataHub), zapewniając ciągłość odczytów cen rynkowych (RCE).
-* **Optymalizacja Wydajności:** Rozdzielono częstotliwość odświeżania: ceny aktualizowane są dwa razy dziennie, natomiast dane o obciążeniu i generacji co 5 minut, co minimalizuje obciążenie procesora i sieci.
+**Walidacja konfiguracji:** Wszystkie ceny muszą być większe niż 0, a opłaty dystrybucyjne nie mogą być ujemne – zapobiega to błędom konfiguracji.
+
+**Kompletne tłumaczenia:** Dodano brakujące tłumaczenia dla wszystkich opcji konfiguracji w języku angielskim i polskim.
+
+**Obsługa VAT:** Dodano możliwość automatycznego doliczania podatku VAT (0%, 5%, 23%) do cen energii.
+
+**Opłaty sieciowe:** Wprowadzono konfigurację opłat dystrybucyjnych (stałych i zmiennych) dla wszystkich taryf, umożliwiając realne porównanie kosztów "z rachunku".
+
+**Wybór taryf do porównania:** Użytkownik może teraz wybrać, które taryfy chce porównywać w Trybie Porównawczym.
+
+**Nowe sensory:** Dodano binary sensor dla wykrywania cen ujemnych oraz usługę do ręcznego odświeżania cen.
+
+**Inteligentne backoff:** W przypadku powtarzających się błędów API, interwał aktualizacji jest automatycznie zwiększany, aby zmniejszyć obciążenie.
+
+**Średnie ceny zamiast minimum:** Dla większej dokładności, ceny godzinowe są teraz obliczane jako średnia z wszystkich kwadransów w danej godzinie.
+
+**Nowe pliki i struktura:** Dodano `tariffs.py` dla lepszej organizacji kodu taryfowego, `icons.json` z ikonami sensorów oraz `services.yaml` z usługami integracji.
+
 ---
 
 ## 💡 Przykłady Użycia
