@@ -360,7 +360,9 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 {
                     vol.Optional(
                         CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
-                        default=self.config_data.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC, 0.0),
+                        default=self.config_data.get(
+                            CONF_NETWORK_VARIABLE_FEE_DYNAMIC, 0.0
+                        ),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 }
             ),
