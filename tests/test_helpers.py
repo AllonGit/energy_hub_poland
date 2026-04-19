@@ -6,11 +6,13 @@ from zoneinfo import ZoneInfo
 import holidays
 
 from custom_components.energy_hub_poland.helpers import (
-    get_current_g12_price,
-    get_current_g12w_price,
     is_peak_time,
     is_summer,
     parse_hour_ranges,
+)
+from custom_components.energy_hub_poland.tariffs import (
+    get_current_g12_price,
+    get_current_g12w_price,
 )
 
 # Use real Europe/Warsaw timezone so DST detection works properly

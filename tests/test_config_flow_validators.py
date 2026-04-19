@@ -38,6 +38,9 @@ class TestValidateHourFormat:
     def test_trailing_comma(self):
         assert validate_hour_format("6-13,") is False
 
+    def test_overlapping_ranges(self):
+        assert validate_hour_format("6-13,12-15") is False
+
     def test_two_digit_hours(self):
         assert validate_hour_format("08-11,15-22") is True
 

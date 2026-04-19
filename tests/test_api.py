@@ -37,7 +37,7 @@ class TestAsyncGetPrices:
         assert API_URL in url
         assert "2025-01-15" in url
         assert "source=TGE" in url
-        assert "contract=Fix_1" in url
+        assert "contract=Fix_2" in url
 
     @pytest.mark.asyncio
     async def test_timeout_returns_none(self, api_client, mock_session):
