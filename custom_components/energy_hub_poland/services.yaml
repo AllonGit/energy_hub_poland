@@ -2,7 +2,6 @@ energy_hub_poland:
   update_prices:
     name: Update prices
     description: Force an immediate update of the energy prices from PSE/TGE API.
-    target: {}
     fields:
       entry_id:
         name: Config entry
