@@ -8,3 +8,41 @@ energy_hub_poland:
         description: The configuration entry ID for the Energy Hub integration (optional).
         required: false
         example: "a1b2c3d4e5f6"
+  export_tariff_profile:
+    name: Export tariff profile
+    description: Export a tariff profile from the selected Energy Hub entry to a JSON or CSV file.
+    fields:
+      entry_id:
+        name: Config entry
+        description: The configuration entry ID for the Energy Hub integration (optional).
+        required: false
+        example: "a1b2c3d4e5f6"
+      path:
+        name: File path
+        description: Optional file path for the exported profile. If omitted, the profile is saved inside the Home Assistant config directory.
+        required: false
+        example: "energy_hub_poland_profile.json"
+      format:
+        name: Export format
+        description: Optional export format. Valid values are `json` or `csv`.
+        required: false
+        example: "json"
+  import_tariff_profile:
+    name: Import tariff profile
+    description: Import a tariff profile from a JSON or CSV file into the selected Energy Hub entry.
+    fields:
+      entry_id:
+        name: Config entry
+        description: The configuration entry ID for the Energy Hub integration (optional).
+        required: false
+        example: "a1b2c3d4e5f6"
+      path:
+        name: File path
+        description: File path of the profile to import.
+        required: true
+        example: "energy_hub_poland_profile.json"
+      format:
+        name: Import format
+        description: Optional import format. Valid values are `json` or `csv`.
+        required: false
+        example: "json"
