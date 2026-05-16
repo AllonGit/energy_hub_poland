@@ -25,5 +25,5 @@ class EnergyHubEntity(CoordinatorEntity):
             name="Energy Hub",
             manufacturer="AllonGit",
             model="Energy Hub",
-            sw_version="v1.3.1",
+            sw_version="v1.3.2",
         )
