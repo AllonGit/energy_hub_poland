@@ -66,9 +66,18 @@ CONF_NETWORK_VARIABLE_FEE = "network_variable_fee"  # Global fallback
 CONF_NETWORK_VARIABLE_FEE_DYNAMIC = "network_variable_fee_dynamic"
 CONF_NETWORK_VARIABLE_FEE_G11 = "network_variable_fee_g11"
 CONF_NETWORK_VARIABLE_FEE_G12 = "network_variable_fee_g12"
+CONF_NETWORK_VARIABLE_FEE_G12_PEAK = "network_variable_fee_g12_peak"
+CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK = "network_variable_fee_g12_offpeak"
 CONF_NETWORK_VARIABLE_FEE_G12W = "network_variable_fee_g12w"
+CONF_NETWORK_VARIABLE_FEE_G12W_PEAK = "network_variable_fee_g12w_peak"
+CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK = "network_variable_fee_g12w_offpeak"
 CONF_NETWORK_VARIABLE_FEE_G12N = "network_variable_fee_g12n"
+CONF_NETWORK_VARIABLE_FEE_G12N_PEAK = "network_variable_fee_g12n_peak"
+CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK = "network_variable_fee_g12n_offpeak"
 CONF_NETWORK_VARIABLE_FEE_G13 = "network_variable_fee_g13"
+CONF_NETWORK_VARIABLE_FEE_G13_PEAK1 = "network_variable_fee_g13_peak1"
+CONF_NETWORK_VARIABLE_FEE_G13_PEAK2 = "network_variable_fee_g13_peak2"
+CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK = "network_variable_fee_g13_offpeak"
 
 # Units
 UNIT_KWH = "kwh"
