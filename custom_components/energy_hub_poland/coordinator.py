@@ -64,6 +64,10 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.costs: dict[str, float] = dict.fromkeys(
             ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
         )
+        self.cost_breakdown: dict[str, dict[str, float]] = {
+            tariff: {"energy": 0.0, "variable_fee": 0.0, "vat": 0.0, "total": 0.0}
+            for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        }
         self.last_reset: datetime = dt_util.now().replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
@@ -236,19 +240,49 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         return result
 
     @callback
-    def async_update_costs(self, delta: float, prices: dict[str, float]) -> None:
-        """Update accumulated costs with a new energy increment."""
-        # Check for legacy costs and migrate if necessary
+    def async_update_costs(
+        self, delta: float, prices: dict[str, dict[str, float] | None]
+    ) -> None:
+        """Update accumulated costs with a new energy increment and breakdown."""
         legacy_keys = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
         for key in legacy_keys:
             if key not in self.costs:
                 self.costs[key] = 0.0
+            if key not in self.cost_breakdown:
+                self.cost_breakdown[key] = {
+                    "energy": 0.0,
+                    "variable_fee": 0.0,
+                    "vat": 0.0,
+                    "total": 0.0,
+                }
 
-        for tariff, price in prices.items():
-            if price is not None:
-                self.costs[tariff] += delta * price
+        for tariff, price_data in prices.items():
+            if price_data is None:
+                continue
+
+            if isinstance(price_data, dict):
+                energy_price = price_data.get("energy", 0.0)
+                variable_fee = price_data.get("variable_fee", 0.0)
+                vat_amount = price_data.get("vat", 0.0)
+                total_price = price_data.get("total", 0.0)
+            else:
+                energy_price = float(price_data)
+                variable_fee = 0.0
+                vat_amount = 0.0
+                total_price = float(price_data)
+
+            self.costs[tariff] += delta * total_price
+            breakdown = self.cost_breakdown.setdefault(
+                tariff,
+                {"energy": 0.0, "variable_fee": 0.0, "vat": 0.0, "total": 0.0},
+            )
+            breakdown["energy"] += delta * energy_price
+            breakdown["variable_fee"] += delta * variable_fee
+            breakdown["vat"] += delta * vat_amount
+            breakdown["total"] += delta * total_price
 
         self.data["costs"] = self.costs
+        self.data["cost_breakdown"] = self.cost_breakdown
         self.async_set_updated_data(self.data)
         self.hass.async_create_task(self._save_cache())
 
@@ -332,6 +366,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             "today": self._internal_data["today"],
             "tomorrow": self._internal_data["tomorrow"],
             "costs": self.costs,
+            "cost_breakdown": self.cost_breakdown,
             "last_reset": self.last_reset,
             "load_actual": self._internal_data.get("load_actual"),
             "load_fcst": self._internal_data.get("load_fcst"),
@@ -405,6 +440,17 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     self.costs.update(
                         {k: float(v) for k, v in saved_costs.items() if k in self.costs}
                     )
+                if saved_breakdown := cached.get("cost_breakdown"):
+                    for tariff, breakdown in saved_breakdown.items():
+                        if tariff not in self.cost_breakdown:
+                            continue
+                        self.cost_breakdown[tariff].update(
+                            {
+                                kk: float(vv)
+                                for kk, vv in breakdown.items()
+                                if kk in self.cost_breakdown[tariff]
+                            }
+                        )
                 if last_reset := cached.get("last_reset"):
                     self.last_reset = (
                         dt_util.parse_datetime(last_reset) or self.last_reset
@@ -415,6 +461,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     "today": self._internal_data["today"],
                     "tomorrow": self._internal_data["tomorrow"],
                     "costs": self.costs,
+                    "cost_breakdown": self.cost_breakdown,
                     "last_reset": self.last_reset,
                     "load_actual": self._internal_data["load_actual"],
                     "load_fcst": self._internal_data["load_fcst"],
@@ -446,6 +493,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 ),
                 "api_connected": self.api_connected,
                 "costs": self.costs,
+                "cost_breakdown": self.cost_breakdown,
                 "last_reset": self.last_reset.isoformat() if self.last_reset else None,
                 "load_actual": self._internal_data.get("load_actual"),
                 "load_fcst": self._internal_data.get("load_fcst"),
