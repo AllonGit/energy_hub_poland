@@ -35,6 +35,17 @@ from .const import (
     CONF_NETWORK_FIXED_FEE,
     CONF_NETWORK_VARIABLE_FEE,
     CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
+    CONF_NETWORK_VARIABLE_FEE_G12_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12W_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12N_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G13_PEAK1,
+    CONF_NETWORK_VARIABLE_FEE_G13_PEAK2,
+    CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
     CONF_OPERATION_MODE,
     CONF_PRICE_OFFPEAK,
     CONF_PRICE_PEAK,
@@ -430,8 +441,12 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                         CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.50)
                     ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
                     vol.Optional(
-                        CONF_NETWORK_VARIABLE_FEE,
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                        CONF_NETWORK_VARIABLE_FEE_G12_PEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12_PEAK, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK, 0.0),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                     vol.Required(
                         CONF_HOURS_PEAK_SUMMER,
@@ -475,8 +490,12 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                         CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.55)
                     ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
                     vol.Optional(
-                        CONF_NETWORK_VARIABLE_FEE,
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                        CONF_NETWORK_VARIABLE_FEE_G12W_PEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12W_PEAK, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK, 0.0),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                     vol.Required(
                         CONF_HOURS_PEAK_SUMMER,
@@ -513,8 +532,12 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                         CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.45)
                     ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
                     vol.Optional(
-                        CONF_NETWORK_VARIABLE_FEE,
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                        CONF_NETWORK_VARIABLE_FEE_G12N_PEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12N_PEAK, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK, 0.0),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                 }
             ),
@@ -561,8 +584,16 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                         CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.50)
                     ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
                     vol.Optional(
-                        CONF_NETWORK_VARIABLE_FEE,
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                        CONF_NETWORK_VARIABLE_FEE_G13_PEAK1,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G13_PEAK1, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_G13_PEAK2,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G13_PEAK2, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK, 0.0),
                     ): vol.All(vol.Coerce(float), vol.Range(min=0)),
                     vol.Required(
                         CONF_HOURS_PEAK_1_SUMMER,
