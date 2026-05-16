@@ -48,27 +48,11 @@ The integration's most powerful feature.
 
 ---
 
-### 🆕 What's New (Version 1.3.1)
+### 🆕 What's New (Version 1.3.2)
 
-**Enhanced API Reliability:** Added automatic retry logic for connection errors and monitoring of API response schema changes from PSE/TGE.
+**Tariff Profile Import/Export:** Added service-based import and export of tariff profiles in JSON or CSV format for quick backup and replication across Home Assistant instances.
 
-**Configuration Validation:** All prices must be greater than 0, and distribution fees cannot be negative – prevents configuration errors.
-
-**Complete Translations:** Added missing translations for all configuration options in English and Polish.
-
-**VAT Support:** Added automatic VAT calculation (0%, 5%, 23%) for energy prices.
-
-**Network Fees:** Introduced configuration for distribution fees (fixed and variable) for all tariffs, enabling real "bill-like" cost comparisons.
-
-**Tariff Selection:** Users can now choose which tariffs to compare in Comparison Mode.
-
-**New Sensors:** Added binary sensor for negative price detection and service for manual price refresh.
-
-**Smart Backoff:** In case of repeated API errors, update interval is automatically increased to reduce load.
-
-**Average Prices:** For better accuracy, hourly prices are now calculated as averages from all 15-minute intervals in the hour.
-
-**New Files and Structure:** Added `tariffs.py` for better tariff code organization and `services.yaml` with integration services. Sensor icons are now defined directly in `const.py`.
+**Cost Breakdown:** Extended cost reporting with explicit energy, variable fee, VAT, and total price components for clearer comparison and reporting.
 
 ---
 
