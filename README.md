@@ -69,27 +69,11 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-### 🆕 Co nowego (Wersja 1.3.1)
+### 🆕 Co nowego (Wersja 1.3.2)
 
-**Ulepszona niezawodność API:** Dodano automatyczne ponawianie prób w przypadku błędów połączenia oraz monitorowanie zmian w strukturze odpowiedzi API PSE/TGE.
+**Import/Eksport profili taryfowych:** Dodano usługi do zapisu i odtworzenia ustawień taryfowych w formacie JSON lub CSV.
 
-**Walidacja konfiguracji:** Wszystkie ceny muszą być większe niż 0, a opłaty dystrybucyjne nie mogą być ujemne – zapobiega to błędom konfiguracji.
-
-**Kompletne tłumaczenia:** Dodano brakujące tłumaczenia dla wszystkich opcji konfiguracji w języku angielskim i polskim.
-
-**Obsługa VAT:** Dodano możliwość automatycznego doliczania podatku VAT (0%, 5%, 23%) do cen energii.
-
-**Opłaty sieciowe:** Wprowadzono konfigurację opłat dystrybucyjnych (stałych i zmiennych) dla wszystkich taryf, umożliwiając realne porównanie kosztów "z rachunku".
-
-**Wybór taryf do porównania:** Użytkownik może teraz wybrać, które taryfy chce porównywać w Trybie Porównawczym.
-
-**Nowe sensory:** Dodano binary sensor dla wykrywania cen ujemnych oraz usługę do ręcznego odświeżania cen.
-
-**Inteligentne backoff:** W przypadku powtarzających się błędów API, interwał aktualizacji jest automatycznie zwiększany, aby zmniejszyć obciążenie.
-
-**Średnie ceny zamiast minimum:** Dla większej dokładności, ceny godzinowe są teraz obliczane jako średnia z wszystkich kwadransów w danej godzinie.
-
-**Nowe pliki i struktura:** Dodano `tariffs.py` dla lepszej organizacji kodu taryfowego oraz `services.yaml` z usługami integracji. Ikony czujników są teraz trwale zdefiniowane w `const.py`.
+**Podział kosztów:** Rozszerzono raportowanie o składowe kosztów: energia, opłaty zmienne, VAT i cena całkowita.
 
 ---
 
