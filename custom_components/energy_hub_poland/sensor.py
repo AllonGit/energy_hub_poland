@@ -29,6 +29,15 @@ from .const import (
     CONF_G13_SETTINGS,
     CONF_NETWORK_VARIABLE_FEE,
     CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
+    CONF_NETWORK_VARIABLE_FEE_G12_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12W_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12N_PEAK,
+    CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK,
+    CONF_NETWORK_VARIABLE_FEE_G13_PEAK1,
+    CONF_NETWORK_VARIABLE_FEE_G13_PEAK2,
+    CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK,
     CONF_OPERATION_MODE,
     CONF_PRICE_UNIT,
     CONF_SENSOR_TYPE,
@@ -196,6 +205,42 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         variable_fee = None
         if tariff == "dynamic":
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC)
+        elif tariff == "g12":
+            tariff_settings = self._config.get(f"{tariff}_settings", {})
+            # For G12, check if price is peak or offpeak
+            if energy_price == tariff_settings.get("price_peak"):
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_PEAK)
+            else:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK)
+            # Fallback to generic if not set
+            if variable_fee is None:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
+        elif tariff == "g12w":
+            tariff_settings = self._config.get(f"{tariff}_settings", {})
+            if energy_price == tariff_settings.get("price_peak"):
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12W_PEAK)
+            else:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK)
+            if variable_fee is None:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
+        elif tariff == "g12n":
+            tariff_settings = self._config.get(f"{tariff}_settings", {})
+            if energy_price == tariff_settings.get("price_peak"):
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12N_PEAK)
+            else:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK)
+            if variable_fee is None:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
+        elif tariff == "g13":
+            tariff_settings = self._config.get(f"{tariff}_settings", {})
+            if energy_price == tariff_settings.get("price_peak_1"):
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G13_PEAK1)
+            elif energy_price == tariff_settings.get("price_peak_2"):
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G13_PEAK2)
+            else:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK)
+            if variable_fee is None:
+                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         else:
             tariff_settings = self._config.get(f"{tariff}_settings", {})
             # Try new generic key
