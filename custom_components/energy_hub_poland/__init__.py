@@ -92,7 +92,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.async_on_unload(entry.add_update_listener(update_listener))
 
-    # Register services for this entry
     async def handle_update_prices(call: Any) -> None:
         """Handle the service call to force price update."""
         entry_id = call.data.get("entry_id", entry.entry_id)
@@ -101,8 +100,120 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug("Forcing price update via service call")
             await coordinator.async_request_refresh()
 
+    async def handle_export_profile(call: Any) -> None:
+        """Handle the service call to export a tariff profile."""
+        entry_id = call.data.get("entry_id", entry.entry_id)
+        if entry_id != entry.entry_id:
+            return
+
+        path = call.data.get("path")
+        fmt = call.data.get("format")
+        profile = {"data": entry.data, "options": entry.options}
+
+        if not fmt:
+            fmt = "json" if not path or path.endswith(".json") else "csv"
+
+        from pathlib import Path
+
+        if not path:
+            path = hass.config.path(f"energy_hub_poland_profile.{fmt}")
+        else:
+            path = path if Path(path).is_absolute() else hass.config.path(path)
+
+        _LOGGER.info("Exporting tariff profile for entry %s to %s", entry_id, path)
+
+        if fmt == "csv":
+            import csv
+
+            with open(path, "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(["key", "value"])
+
+                def flatten(prefix: str, value: Any) -> None:
+                    if isinstance(value, dict):
+                        for key, item in value.items():
+                            flatten(f"{prefix}{key}.", item)
+                    else:
+                        writer.writerow([prefix.rstrip("."), value])
+
+                flatten("data.", profile["data"])
+                flatten("options.", profile["options"])
+        else:
+            import json
+
+            with open(path, "w", encoding="utf-8") as jsonfile:
+                json.dump(profile, jsonfile, indent=2, ensure_ascii=False)
+
+    async def handle_import_profile(call: Any) -> None:
+        """Handle the service call to import a tariff profile."""
+        entry_id = call.data.get("entry_id", entry.entry_id)
+        if entry_id != entry.entry_id:
+            return
+
+        path = call.data.get("path")
+        fmt = call.data.get("format")
+        if not path:
+            _LOGGER.error("Profile import failed: path must be provided")
+            return
+
+        from pathlib import Path
+
+        path = path if Path(path).is_absolute() else hass.config.path(path)
+        if not fmt:
+            fmt = "json" if path.endswith(".json") else "csv"
+
+        _LOGGER.info("Importing tariff profile for entry %s from %s", entry_id, path)
+
+        if fmt == "csv":
+            import csv
+
+            profile: dict[str, Any] = {"data": {}, "options": {}}
+            with open(path, encoding="utf-8") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    key = row.get("key")
+                    value = row.get("value")
+                    if key is None:
+                        continue
+                    target = (
+                        profile["data"]
+                        if key.startswith("data.")
+                        else profile["options"]
+                    )
+                    parts = key.split(".")[1:]
+                    current = target
+                    for part in parts[:-1]:
+                        current = current.setdefault(part, {})
+                    current[parts[-1]] = value
+        else:
+            import json
+
+            with open(path, encoding="utf-8") as jsonfile:
+                profile = json.load(jsonfile)
+
+        data = profile.get("data") if isinstance(profile, dict) else None
+        options = profile.get("options") if isinstance(profile, dict) else None
+        if data is None and options is None and isinstance(profile, dict):
+            options = profile
+
+        if data or options:
+            updated_data = {**entry.data, **(data or {})}
+            updated_options = {**entry.options, **(options or {})}
+            await hass.config_entries.async_update_entry(
+                entry,
+                data=updated_data,
+                options=updated_options,
+            )
+            await hass.config_entries.async_reload(entry.entry_id)
+
     hass.services.async_register(
         DOMAIN, "update_prices", handle_update_prices, supports_response=False
+    )
+    hass.services.async_register(
+        DOMAIN, "export_tariff_profile", handle_export_profile, supports_response=False
+    )
+    hass.services.async_register(
+        DOMAIN, "import_tariff_profile", handle_import_profile, supports_response=False
     )
 
     return True
