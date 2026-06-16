@@ -33,6 +33,7 @@ class PSEApiClient:
         params = {
             "$select": select_fields,
             "$filter": f"business_date ge '{date_str}'",
+            "$first": 250,
         }
 
         for attempt in range(3):  # Retry up to 3 times
