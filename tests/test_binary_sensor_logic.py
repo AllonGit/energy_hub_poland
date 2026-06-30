@@ -140,6 +140,8 @@ class TestApiStatusBinarySensor:
     def test_connected(self):
         coord = MagicMock()
         coord.api_connected = True
+        coord.data = {"today": {0: 0.1}}
+        coord.data_status = "ok"
 
         sensor = _make_api_status_sensor(coord)
         assert sensor.is_on is True
@@ -147,6 +149,15 @@ class TestApiStatusBinarySensor:
     def test_disconnected(self):
         coord = MagicMock()
         coord.api_connected = False
+
+        sensor = _make_api_status_sensor(coord)
+        assert sensor.is_on is False
+
+    def test_error_status_is_off(self):
+        coord = MagicMock()
+        coord.api_connected = True
+        coord.data = {"today": {0: 0.1}}
+        coord.data_status = "error"
 
         sensor = _make_api_status_sensor(coord)
         assert sensor.is_on is False

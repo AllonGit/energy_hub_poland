@@ -352,6 +352,20 @@ class TestApiFailure:
         assert result["today"] == PRICES_TODAY
         assert result["tomorrow"] is None
 
+    @pytest.mark.asyncio
+    async def test_update_failure_records_diagnostic_state(self):
+        """A failed update should expose useful diagnostic state for UI and logs."""
+        coord = _make_coordinator(today=None, today_date=None)
+        coord._update_pse_frequent_data = AsyncMock(side_effect=RuntimeError("boom"))
+
+        with _patch_now(NOW), _patch_utcnow(NOW_UTC):
+            with pytest.raises(UpdateFailed):
+                await coord._async_update_data()
+
+        assert coord.data_status == "error"
+        assert coord.last_error_message == "Failed to fetch frequent PSE data: boom"
+        assert coord.api_connected is False
+
     @pytest.mark.skip(
         reason="Awaiting refactor for new _update_pse_prices architecture"
     )
