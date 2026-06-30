@@ -46,7 +46,6 @@ class PSEApiClient:
                     data = await response.json()
                     result = data.get("value", [])
 
-                    # API behavior monitoring
                     if result:
                         current_schema = self._get_schema(result[0])
                         if self._last_response_schema != current_schema:

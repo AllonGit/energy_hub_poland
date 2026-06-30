@@ -1,4 +1,3 @@
-# custom_components/energy_hub_poland/config_flow.py
 """Config flow for Energy Hub Poland integration."""
 
 import logging
@@ -78,7 +77,6 @@ _LOGGER = logging.getLogger(__package__)
 
 DEFAULT_G12_PEAK_HOURS = "6-13,15-22"
 
-# Default hour configurations for different Polish energy providers
 PROVIDER_DEFAULTS = {
     PROVIDER_PGE: {
         CONF_HOURS_PEAK: "6-13,15-22",
@@ -201,7 +199,6 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             if mode == MODE_COMPARISON:
                 return await self.async_step_tariff_selection()
 
-        # For new installations or re-runs of config flow
         default_vat = self.config_data.get(CONF_VAT_RATE)
         if default_vat is None:
             default_vat = "23" if self.config_data.get("add_vat") else "23"
@@ -237,7 +234,6 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             ),
         }
 
-        # Price spike threshold is only relevant for Dynamic mode
         if mode == MODE_DYNAMIC:
             schema[vol.Required(CONF_SPIKE_THRESHOLD, default=30)] = vol.All(
                 vol.Coerce(int), vol.Range(min=1, max=500)
@@ -691,7 +687,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
         mode = config.get(CONF_OPERATION_MODE)
 
         if user_input is not None:
-            # Validate all fields containing 'hours'
             for key, val in user_input.items():
                 if "hours" in key and not validate_hour_format(str(val)):
                     errors["base"] = "invalid_hour_range"
@@ -699,7 +694,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
 
             if not errors:
                 new_options = {}
-                # Map prefixed fields back to their respective settings dictionaries
                 tariff_prefixes = {
                     "g11_settings": CONF_G11_SETTINGS,
                     "g12_settings": CONF_G12_SETTINGS,
@@ -741,8 +735,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
 
         schema = {}
 
-        # VAT rate
-        # Migrate add_vat to vat_rate if exists
         default_vat = config.get(CONF_VAT_RATE)
         if default_vat is None:
             default_vat = "23" if config.get("add_vat") else "0"
@@ -755,7 +747,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
             )
         )
 
-        # Unit selection is always available
         schema[
             vol.Required(CONF_PRICE_UNIT, default=config.get(CONF_PRICE_UNIT, UNIT_KWH))
         ] = SelectSelector(
@@ -766,7 +757,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
             )
         )
 
-        # Spike threshold only for Dynamic/RCE mode
         if mode == MODE_DYNAMIC:
             schema[
                 vol.Required(
@@ -774,7 +764,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             ] = vol.All(vol.Coerce(int), vol.Range(min=1, max=500))
 
-        # Energy sensor settings only for comparison mode
         if mode == MODE_COMPARISON:
             schema[
                 vol.Optional(CONF_ENERGY_SENSOR, default=config.get(CONF_ENERGY_SENSOR))
@@ -792,7 +781,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                 )
             )
 
-        # Global network fees
         schema[
             vol.Optional(
                 CONF_NETWORK_FIXED_FEE, default=config.get(CONF_NETWORK_FIXED_FEE, 0.0)
@@ -811,7 +799,6 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
             )
         ] = vol.Coerce(float)
 
-        # Populate schema with fields relevant to the current mode
         tariffs_to_show = []
         if mode == MODE_COMPARISON:
             tariffs_to_show = [MODE_G11, MODE_G12, MODE_G12W, MODE_G12N, MODE_G13]

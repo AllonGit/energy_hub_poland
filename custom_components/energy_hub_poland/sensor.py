@@ -1,4 +1,3 @@
-# custom_components/energy_hub_poland/sensor.py
 """Sensor platform for Energy Hub Poland."""
 
 import logging
@@ -143,7 +142,6 @@ def setup_comparison_sensors(
                 CurrentPriceSensor(coordinator, entry, tariff, tariff_configs[tariff])
             )
 
-    # Analytical RCE sensors
     sensors.extend(
         [
             MinMaxPriceSensor(coordinator, entry, "today", "min"),
@@ -156,10 +154,8 @@ def setup_comparison_sensors(
             LowestPriceHourSensor(coordinator, entry, "tomorrow"),
         ]
     )
-    # Recommendation sensor requires an energy sensor to calculate historical costs
     if config.get(CONF_ENERGY_SENSOR):
         sensors.append(RecommendationSensor(coordinator, entry))
-        # Add individual cost sensors for enabled tariffs
         for tariff in enabled_tariffs:
             sensors.append(TariffCostSensor(coordinator, entry, tariff))
 
@@ -201,18 +197,15 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         if energy_price is None:
             return None
 
-        # 1. Get variable network fee for this tariff
         variable_fee = None
         if tariff == "dynamic":
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC)
         elif tariff == "g12":
             tariff_settings = self._config.get(f"{tariff}_settings", {})
-            # For G12, check if price is peak or offpeak
             if energy_price == tariff_settings.get("price_peak"):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_PEAK)
             else:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK)
-            # Fallback to generic if not set
             if variable_fee is None:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         elif tariff == "g12w":
@@ -243,14 +236,11 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         else:
             tariff_settings = self._config.get(f"{tariff}_settings", {})
-            # Try new generic key
             variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
-            # If not found, try legacy tariff-specific key (e.g., network_variable_fee_g11)
             if variable_fee is None:
                 legacy_key = f"network_variable_fee_{tariff}"
                 variable_fee = tariff_settings.get(legacy_key)
 
-        # Fallback to global variable fee if tariff-specific is not set or 0
         if variable_fee is None or float(variable_fee) == 0.0:
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE, 0.0)
 
@@ -258,7 +248,6 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
 
         total_net = energy_price + variable_fee
 
-        # 2. Apply VAT
         vat_rate_str = self._config.get(CONF_VAT_RATE, "0")
         try:
             vat_rate = float(vat_rate_str) / 100
@@ -343,7 +332,6 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
             ),
         }
 
-        # Apply fees and VAT to all
         return {
             tariff: self._calculate_total_price(price, tariff)
             for tariff, price in prices.items()
@@ -383,7 +371,6 @@ class TariffCostSensor(EnergyHubSensorEntity):
         """Handle entity being added to HA."""
         await super().async_added_to_hass()
 
-        # Data migration: if coordinator costs are zero, try to restore from this sensor's state
         costs = self.coordinator.costs
         if all(v == 0 for v in costs.values()):
             if (last_state := await self.async_get_last_state()) is not None:
@@ -416,7 +403,6 @@ class RecommendationSensor(EnergyConsumerEntity):
         super().__init__(coordinator, entry)
         self._attr_translation_key = "recommendation"
         self._attr_unique_id = f"recommendation_{entry.entry_id}"
-        # Store enabled tariffs for filtering in comparison mode
         self._enabled_tariffs = self._config.get(
             CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
         )
@@ -425,7 +411,6 @@ class RecommendationSensor(EnergyConsumerEntity):
         """Handle entity being added to HA - setup tracking."""
         await super().async_added_to_hass()
 
-        # Initialize last reading from the energy sensor's current state
         if self._energy_sensor_id:
             if (state := self.hass.states.get(self._energy_sensor_id)) is not None:
                 try:
@@ -442,7 +427,6 @@ class RecommendationSensor(EnergyConsumerEntity):
     def _process_energy_delta(self, delta: float) -> None:
         """Apply energy delta to each tariff's accumulated cost in the coordinator."""
         prices = self._get_tariff_prices()
-        # Filter prices to only enabled tariffs
         filtered_prices = {
             k: v for k, v in prices.items() if k in self._enabled_tariffs
         }
@@ -453,9 +437,7 @@ class RecommendationSensor(EnergyConsumerEntity):
         """Determine and return the cheapest tariff."""
         try:
             costs = self.coordinator.data.get("costs", {})
-            # Prefer using accumulated costs for recommendation
             if any(v > 0 for v in costs.values()):
-                # Filter only enabled tariffs
                 enabled_costs = {
                     k: v for k, v in costs.items() if k in self._enabled_tariffs
                 }
@@ -463,9 +445,7 @@ class RecommendationSensor(EnergyConsumerEntity):
                     cheapest = min(enabled_costs, key=lambda k: enabled_costs[k])
                     return "dynamiczna" if cheapest == "dynamic" else cheapest
 
-            # Fallback to current instantaneous prices
             prices = self._get_tariff_prices()
-            # Filter mapping to only enabled tariffs
             filtered = {
                 tariff: float(prices[tariff])
                 for tariff in self._enabled_tariffs
@@ -485,7 +465,6 @@ class RecommendationSensor(EnergyConsumerEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Expose calculated costs and savings as attributes."""
         costs = self.coordinator.data.get("costs", {})
-        # Filter costs to only enabled tariffs
         enabled_costs = {
             k: round(v, 2) for k, v in costs.items() if k in self._enabled_tariffs
         }
@@ -560,7 +539,6 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
         """Expose price forecast tables and statistics for visualization."""
         attrs = {}
 
-        # Calculation parameters for all tariffs
         variable_fee = None
         if self._tariff == "dynamic":
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE_DYNAMIC)
@@ -583,7 +561,6 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
                 attrs.update({"today_prices": {}, "tomorrow_prices": {}})
                 return attrs
 
-            # We want to show total prices (with fees and VAT) in attributes as well
             today_raw = self.coordinator.data.get("today", {})
             tomorrow_raw = self.coordinator.data.get("tomorrow", {})
 
@@ -691,7 +668,6 @@ class AveragePriceSensor(EnergyHubSensorEntity):
             return None
         val = self.coordinator.data.get(f"{self._day}_avg")
 
-        # Compatibility with tests that don't pre-calculate avg in coordinator
         if val is None:
             prices = self.coordinator.data.get(self._day, {})
             if prices:

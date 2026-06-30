@@ -41,10 +41,8 @@ async def async_setup_entry(
         "Setting up binary sensors for mode: %s (entry_id: %s)", mode, entry.entry_id
     )
 
-    # API Status is a diagnostic sensor available in all modes
     entities = [ApiStatusBinarySensor(coordinator, entry)]
 
-    # Price Spike and Negative Price sensors are available in RCE (Dynamic) mode
     if mode == MODE_DYNAMIC:
         entities.append(PriceSpikeBinarySensor(coordinator, entry))
         entities.append(NegativePriceBinarySensor(coordinator, entry))
@@ -96,7 +94,6 @@ class PriceSpikeBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
 
         today_avg = self.coordinator.data.get("today_avg")
 
-        # Compatibility with tests
         if today_avg is None:
             today_prices = self.coordinator.data.get("today", {})
             if today_prices:
@@ -107,15 +104,12 @@ class PriceSpikeBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
 
         current_price = self.coordinator.data.get("today", {}).get(poland_now.hour)
 
-        # Guard against missing data
         if today_avg is None or current_price is None:
             return False
 
-        # Default threshold is 30% above average
         config = getattr(self, "_config", {})
         threshold = config.get(CONF_SPIKE_THRESHOLD, 30)
 
-        # Special case for average 0 to avoid ZeroDivisionError
         if today_avg == 0:
             return current_price > 0
 

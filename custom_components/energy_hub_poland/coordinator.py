@@ -225,9 +225,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
         pse_prices = self._parse_pse_prices(rce_data, forecast_data)
 
-        # Update today
         today_prices = {h: pse_prices.get((today_date, h)) for h in range(24)}
-        # If missing some hours, try PGE fallback
         if None in today_prices.values():
             pge_prices = await self._fetch_pge_prices(today_date)
             if pge_prices:
@@ -241,7 +239,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             }
             self._internal_data["today_date"] = today_date
 
-        # Update tomorrow
         tomorrow_date = today_date + timedelta(days=1)
         tomorrow_prices = {h: pse_prices.get((tomorrow_date, h)) for h in range(24)}
         if None in tomorrow_prices.values():
@@ -284,7 +281,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             dt = dt_util.parse_datetime(dt_str)
             if not dt:
                 return
-            # Polish time adjust: 00:15-01:00 is hour 0
             hour = dt.hour
             d_date = dt.date()
             if dt.minute == 0 and dt.second == 0:
@@ -309,14 +305,11 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             return sum(values) / len(values)
 
         result: dict[tuple[date, int], float] = {}
-        # Combine keys from both
         all_keys = set(hourly_actuals.keys()) | set(hourly_forecasts.keys())
 
         for key in all_keys:
-            # If we have actuals for this hour, average them
             if key in hourly_actuals:
                 result[key] = average(hourly_actuals[key])
-            # Otherwise average forecasts
             else:
                 result[key] = average(hourly_forecasts[key])
 
@@ -408,13 +401,11 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         poland_now = now.astimezone(poland_tz)
         today_date = poland_now.date()
 
-        # Monthly reset check
         if now.day == 1 and self.last_reset.month != now.month:
             _LOGGER.info("Monthly cost reset triggered")
             self.costs = dict.fromkeys(self.costs, 0.0)
             self.last_reset = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        # 1. Fetch frequent data (Load, Generation)
         try:
             await self._update_pse_frequent_data(today_date)
             self.api_connected = True
@@ -424,7 +415,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             self._record_error(f"Failed to fetch frequent PSE data: {e}")
             self._error_count += 1
 
-        # 2. Fetch prices twice a day (00:01 and 12:00) or if missing
         last_price_update = self._internal_data.get("last_price_update")
         needs_price_update = False
 
@@ -462,7 +452,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
         self._adjust_update_interval()
 
-        # Handle day transition (midnight)
         if (
             self._internal_data["today_date"]
             and self._internal_data["today_date"] < today_date
@@ -476,7 +465,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self._refresh_diagnostic_state()
         await self._save_cache()
 
-        # Raise error only if we have no data at all for today
         if not self._internal_data["today"]:
             raise UpdateFailed("No energy price data available for today")
 
@@ -498,7 +486,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             "last_price_source": self.last_price_source,
         }
 
-        # Calculate daily statistics
         for day in ["today", "tomorrow"]:
             prices = data.get(day)
             if prices:
@@ -588,7 +575,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 self.last_price_source = cached.get("last_price_source")
                 self._refresh_diagnostic_state()
 
-                # Populate self.data immediately
                 self.data = {
                     "today": self._internal_data["today"],
                     "tomorrow": self._internal_data["tomorrow"],
@@ -673,13 +659,10 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 if not isinstance(item, dict):
                     continue
 
-                # API returns timestamps in UTC. Convert them to Polish local time
-                # to correctly map prices to Polish hour intervals (0-23).
                 date_time = item.get("date_time") or item.get("datetime")
                 if not date_time:
                     continue
 
-                # Support both strings and datetime objects (from tests)
                 if isinstance(date_time, datetime):
                     dt = date_time
                 else:
@@ -688,16 +671,12 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 if dt is None:
                     continue
 
-                # Assume UTC if no timezone info is present
                 if dt.tzinfo is None:
                     dt = dt.replace(tzinfo=dt_util.UTC)
 
-                # Convert to Polish time
                 poland_dt = dt.astimezone(poland_tz)
                 hour = poland_dt.hour
 
-                # In tests, Warsaw is patched to UTC or something else sometimes.
-                # Stick to the explicit time from the string when available.
                 if isinstance(date_time, str) and " " in date_time:
                     try:
                         hour = int(date_time.split(" ")[1].split(":")[0])
@@ -731,11 +710,8 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 except (TypeError, ValueError):
                     price_val = 0.0
 
-                # Some providers return PLN/MWh; some already return PLN/kWh.
-                # Avoid dividing by 1000 when the value is already in the kWh range.
                 normalized_price = price_val / 1000 if price_val > 10 else price_val
 
-                # Additional validation: check price range.
                 if not (0 <= normalized_price <= 10000):
                     _LOGGER.warning(
                         "Invalid price value: %s for hour %d. Skipping record.",

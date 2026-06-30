@@ -15,7 +15,6 @@ ICONS = {
     "highest_price_hour": "mdi:clock-alert-outline",
 }
 
-# Configuration keys
 CONF_OPERATION_MODE = "operation_mode"
 CONF_VAT_RATE = "vat_rate"
 CONF_ENERGY_SENSOR = "energy_sensor"
@@ -34,11 +33,9 @@ CONF_PRICE_PEAK = "price_peak"
 CONF_PRICE_OFFPEAK = "price_offpeak"
 CONF_HOURS_PEAK = "hours_peak"
 
-# G12 Seasonal Peak Hour Keys
 CONF_HOURS_PEAK_SUMMER = "hours_peak_summer"
 CONF_HOURS_PEAK_WINTER = "hours_peak_winter"
 
-# G13 Specific Configuration Keys
 CONF_PRICE_PEAK_1 = "price_peak_1"
 CONF_PRICE_PEAK_2 = "price_peak_2"
 CONF_HOURS_PEAK_1_SUMMER = "hours_peak_1_summer"
@@ -46,7 +43,6 @@ CONF_HOURS_PEAK_2_SUMMER = "hours_peak_2_summer"
 CONF_HOURS_PEAK_1_WINTER = "hours_peak_1_winter"
 CONF_HOURS_PEAK_2_WINTER = "hours_peak_2_winter"
 
-# Operation Modes
 MODE_DYNAMIC = "dynamic"
 MODE_G11 = "g11"
 MODE_G12 = "g12"
@@ -55,14 +51,11 @@ MODE_G12N = "g12n"
 MODE_G13 = "g13"
 MODE_COMPARISON = "comparison"
 
-# Enabled tariffs
 CONF_ENABLED_TARIFFS = "enabled_tariffs"
 
-# Network fees
 CONF_NETWORK_FIXED_FEE = "network_fixed_fee"
 CONF_NETWORK_VARIABLE_FEE = "network_variable_fee"  # Global fallback
 
-# Per-tariff network variable fees (for accurate comparisons)
 CONF_NETWORK_VARIABLE_FEE_DYNAMIC = "network_variable_fee_dynamic"
 CONF_NETWORK_VARIABLE_FEE_G11 = "network_variable_fee_g11"
 CONF_NETWORK_VARIABLE_FEE_G12 = "network_variable_fee_g12"
@@ -79,19 +72,15 @@ CONF_NETWORK_VARIABLE_FEE_G13_PEAK1 = "network_variable_fee_g13_peak1"
 CONF_NETWORK_VARIABLE_FEE_G13_PEAK2 = "network_variable_fee_g13_peak2"
 CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK = "network_variable_fee_g13_offpeak"
 
-# Units
 UNIT_KWH = "kwh"
 UNIT_MWH = "mwh"
 
-# Update interval tuning
 DEFAULT_UPDATE_INTERVAL_MINUTES = 5
 ERROR_BACKOFF_THRESHOLD = 3
 ERROR_BACKOFF_INTERVAL_MINUTES = 15
 
-# Compatibility with tests
 CONF_UNIT_TYPE = CONF_PRICE_UNIT
 
-# Energy Providers (used for pre-filling standard hours)
 PROVIDER_CUSTOM = "custom"
 PROVIDER_PGE = "pge"
 PROVIDER_TAURON = "tauron"
@@ -99,11 +88,9 @@ PROVIDER_ENEA = "enea"
 PROVIDER_ENERGA = "energa"
 PROVIDER_STOEN = "stoen"
 
-# Sensor Types
 SENSOR_TYPE_TOTAL_INCREASING = "total_increasing"
 SENSOR_TYPE_DAILY = "daily"
 
-# PSE Sensor Constants
 ATTR_LOAD_ACTUAL = "load_actual"
 ATTR_LOAD_FCST = "load_fcst"
 ATTR_GEN_WI = "gen_wi"
