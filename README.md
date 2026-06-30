@@ -81,7 +81,6 @@ Oto jak możesz wykorzystać Energy Hub Poland w swoich automatyzacjach:
 
 * **Inteligentne ładowanie:** Uruchom ładowarkę EV tylko wtedy, gdy cena w taryfie dynamicznej spadnie poniżej ustalonego progu.
 * **Powiadomienia o oszczędnościach:** Otrzymuj powiadomienie na koniec miesiąca z informacją z Trybu Porównania: *"Gdybyś używał taryfy G12w, zaoszczędziłbyś 50 PLN w tym miesiącu"*.
-* **Kolorowe oświetlenie:** Zmień kolor lampy w salonie na czerwony, gdy aktualna cena energii jest w najdroższym przedziale dnia.
 
 ---
 
