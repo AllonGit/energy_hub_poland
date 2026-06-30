@@ -69,11 +69,9 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-### 🆕 Co nowego (Wersja 1.3.2)
+### 🆕 Co nowego (Wersja 1.3.3)
 
-**Import/Eksport profili taryfowych:** Dodano usługi do zapisu i odtworzenia ustawień taryfowych w formacie JSON lub CSV.
-
-**Podział kosztów:** Rozszerzono raportowanie o składowe kosztów: energia, opłaty zmienne, VAT i cena całkowita.
+Kod został uporządkowany i odświeżony pod kątem czytelności i łatwości utrzymania. Część logiki pomocniczej została wydzielona do osobnego modułu, a kluczowe ścieżki taryfowe są teraz bardziej przejrzyste.`
 
 ---
 

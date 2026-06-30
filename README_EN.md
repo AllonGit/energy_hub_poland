@@ -48,11 +48,9 @@ The integration's most powerful feature.
 
 ---
 
-### 🆕 What's New (Version 1.3.2)
+### 🆕 What's New (Version 1.3.3)
 
-**Tariff Profile Import/Export:** Added service-based import and export of tariff profiles in JSON or CSV format for quick backup and replication across Home Assistant instances.
-
-**Cost Breakdown:** Extended cost reporting with explicit energy, variable fee, VAT, and total price components for clearer comparison and reporting.
+The codebase has been cleaned up and reorganized for better readability and maintainability. A portion of the helper logic was extracted into a dedicated module, and the tariff-related flow is now easier to follow.
 
 ---
 

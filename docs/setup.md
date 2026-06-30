@@ -18,7 +18,16 @@ Aby widzieć koszty w panelu Energy:
 2. W sekcji "Zużycie energii elektrycznej" wybierz swój sensor zużycia.
 3. Wybierz opcję "Użyj encji z ceną energii" i wskaż sensor `sensor.energy_hub_sensor_ceny_aktualnej_twojej_teryfy`.
 
-## 4. Import / eksport profili taryfowych
+## 4. Testy i rozwój lokalny
+Jeśli chcesz sprawdzić integrację lokalnie lub rozwijać ją dalej, warto uruchomić testy projektu:
+
+```bash
+pytest
+```
+
+Komponent jest napisany w Pythonie i jest ładowany przez Home Assistant bez osobnego procesu kompilacji. Najważniejsze jest, aby zachować zgodność z aktualnym API Home Assistant oraz poprawność importów i logiki biznesowej.
+
+## 5. Import / eksport profili taryfowych
 Energy Hub Poland obsługuje eksport i import profili taryfowych w formatach **JSON** i **CSV**. Dzięki temu możesz:
 - zapisać konfigurację taryfy jako kopię zapasową,
 - przenieść ustawienia między instancjami Home Assistanta,
@@ -42,7 +51,7 @@ data:
   path: "energy_hub_poland_profile.csv"
 ```
 
-## 5. Podział kosztów
+## 6. Podział kosztów
 W trybie porównawczym oraz w cenach bieżących integracja teraz raportuje wszystkie składowe kosztu:
 - `energy` – koszt samej energii,
 - `variable_fee` – zmienna opłata sieciowa,

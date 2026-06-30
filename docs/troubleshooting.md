@@ -10,5 +10,9 @@ Zanim zgłosisz błąd, sprawdź poniższe najczęstsze sytuacje.
 - **Składniki zmienne:** Upewnij się, że w konfiguracji taryfy G12/G12w podałeś ceny brutto (jeśli takie chcesz widzieć) wraz ze wszystkimi opłatami zmiennymi.
 - **Strefy czasowe:** Integracja automatycznie przelicza czas UTC na czas polski. Sprawdź, czy Twój Home Assistant ma poprawnie ustawioną strefę czasową (`Europe/Warsaw`).
 
+### 🧪 Brak błędów po aktualizacji, ale integracja nie działa
+- **Brak kompilacji:** To jest komponent Pythona, więc nie ma osobnego etapu builda ani kompilacji.
+- **Sprawdź logi i testy:** Jeśli pracujesz nad zmianami lokalnie, uruchom `pytest`, aby szybko wykryć problemy z importami lub logiką.
+
 ### ⚠️ Błąd "Already configured"
 - Możesz posiadać tylko jedną instancję tej integracji. Jeśli chcesz zmienić ustawienia, użyj przycisku **Konfiguruj** na karcie integracji zamiast dodawać ją ponownie.
