@@ -416,6 +416,10 @@ class RecommendationSensor(EnergyConsumerEntity):
         super().__init__(coordinator, entry)
         self._attr_translation_key = "recommendation"
         self._attr_unique_id = f"recommendation_{entry.entry_id}"
+        # Store enabled tariffs for filtering in comparison mode
+        self._enabled_tariffs = self._config.get(
+            CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        )
 
     async def async_added_to_hass(self) -> None:
         """Handle entity being added to HA - setup tracking."""
@@ -438,7 +442,11 @@ class RecommendationSensor(EnergyConsumerEntity):
     def _process_energy_delta(self, delta: float) -> None:
         """Apply energy delta to each tariff's accumulated cost in the coordinator."""
         prices = self._get_tariff_prices()
-        self.coordinator.async_update_costs(delta, prices)
+        # Filter prices to only enabled tariffs
+        filtered_prices = {
+            k: v for k, v in prices.items() if k in self._enabled_tariffs
+        }
+        self.coordinator.async_update_costs(delta, filtered_prices)
 
     @property
     def native_value(self) -> str:
@@ -447,26 +455,37 @@ class RecommendationSensor(EnergyConsumerEntity):
             costs = self.coordinator.data.get("costs", {})
             # Prefer using accumulated costs for recommendation
             if any(v > 0 for v in costs.values()):
-                cheapest = min(costs, key=lambda k: costs[k])
-                return "dynamiczna" if cheapest == "dynamic" else cheapest
+                # Filter only enabled tariffs
+                enabled_costs = {
+                    k: v for k, v in costs.items() if k in self._enabled_tariffs
+                }
+                if enabled_costs:
+                    cheapest = min(enabled_costs, key=lambda k: enabled_costs[k])
+                    return "dynamiczna" if cheapest == "dynamic" else cheapest
 
             # Fallback to current instantaneous prices
             prices = self._get_tariff_prices()
-            mapping = {
-                "dynamiczna": prices.get("dynamic"),
-                "g11": prices.get("g11"),
-                "g12": prices.get("g12"),
-                "g12w": prices.get("g12w"),
-                "g12n": prices.get("g12n"),
-                "g13": prices.get("g13"),
+            # Map tariff names to display names
+            tariff_to_display = {
+                "dynamic": "dynamiczna",
+                "g11": "g11",
+                "g12": "g12",
+                "g12w": "g12w",
+                "g12n": "g12n",
+                "g13": "g13",
             }
-            filtered = {k: float(v) for k, v in mapping.items() if v is not None}
+            # Filter mapping to only enabled tariffs
+            filtered = {
+                tariff: float(prices[tariff])
+                for tariff in self._enabled_tariffs
+                if tariff in prices and prices[tariff] is not None
+            }
 
             if not filtered:
                 return "brak_danych"
 
             cheapest = min(filtered, key=lambda k: filtered[k])
-            return cheapest
+            return "dynamiczna" if cheapest == "dynamic" else cheapest
         except Exception as err:
             _LOGGER.error("Critical error in RecommendationSensor state: %s", err)
             return "brak_danych"
@@ -475,11 +494,15 @@ class RecommendationSensor(EnergyConsumerEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Expose calculated costs and savings as attributes."""
         costs = self.coordinator.data.get("costs", {})
-        dyn_cost = costs.get("dynamic", 0.0)
-        attrs = {
-            "costs": {k: round(v, 2) for k, v in costs.items()},
+        # Filter costs to only enabled tariffs
+        enabled_costs = {
+            k: round(v, 2) for k, v in costs.items() if k in self._enabled_tariffs
         }
-        for k, v in costs.items():
+        dyn_cost = enabled_costs.get("dynamic", 0.0)
+        attrs = {
+            "costs": enabled_costs,
+        }
+        for k, v in enabled_costs.items():
             if k != "dynamic":
                 attrs[f"savings_{k}_vs_dynamic"] = round(
                     dyn_cost - v,

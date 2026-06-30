@@ -3,7 +3,23 @@
 from datetime import datetime
 from typing import Any
 
-from .helpers import _POLISH_HOLIDAYS, is_peak_time, is_summer, parse_hour_ranges
+from .time_helpers import _POLISH_HOLIDAYS, is_peak_time, is_summer, parse_hour_ranges
+
+
+def _is_weekend_or_holiday(dt: datetime) -> bool:
+    return dt.weekday() >= 5 or dt.date() in _POLISH_HOLIDAYS
+
+
+def _get_peak_hours(
+    dt: datetime,
+    settings: dict[str, Any],
+    *,
+    summer_key: str,
+    winter_key: str,
+    default: str = "",
+) -> list[tuple[int, int]]:
+    hour_key = summer_key if is_summer(dt) else winter_key
+    return parse_hour_ranges(settings.get(hour_key, default))
 
 
 def get_current_g11_price(settings: dict[str, Any]) -> float | None:
@@ -11,25 +27,26 @@ def get_current_g11_price(settings: dict[str, Any]) -> float | None:
 
 
 def get_current_g12_price(dt: datetime, settings: dict[str, Any]) -> float | None:
-    if is_summer(dt):
-        hours_str = settings.get("hours_peak_summer") or settings.get("hours_peak", "")
-    else:
-        hours_str = settings.get("hours_peak_winter") or settings.get("hours_peak", "")
-
-    peak_hours = parse_hour_ranges(hours_str)
+    peak_hours = _get_peak_hours(
+        dt,
+        settings,
+        summer_key="hours_peak_summer",
+        winter_key="hours_peak_winter",
+        default=settings.get("hours_peak", ""),
+    )
     if is_peak_time(dt, peak_hours):
         return settings.get("price_peak")
     return settings.get("price_offpeak")
 
 
 def get_current_g12w_price(dt: datetime, settings: dict[str, Any]) -> float | None:
-    if dt.weekday() >= 5 or dt.date() in _POLISH_HOLIDAYS:
+    if _is_weekend_or_holiday(dt):
         return settings.get("price_offpeak")
     return get_current_g12_price(dt, settings)
 
 
 def get_current_g12n_price(dt: datetime, settings: dict[str, Any]) -> float | None:
-    if dt.weekday() == 6 or dt.date() in _POLISH_HOLIDAYS:
+    if _is_weekend_or_holiday(dt):
         return settings.get("price_offpeak")
     if (1 <= dt.hour < 5) or (13 <= dt.hour < 15):
         return settings.get("price_offpeak")
@@ -37,16 +54,23 @@ def get_current_g12n_price(dt: datetime, settings: dict[str, Any]) -> float | No
 
 
 def get_current_g13_price(dt: datetime, settings: dict[str, Any]) -> float | None:
-    if dt.weekday() >= 5 or dt.date() in _POLISH_HOLIDAYS:
+    if _is_weekend_or_holiday(dt):
         return settings.get("price_offpeak")
 
-    summer = is_summer(dt)
-    if summer:
-        p1_hours = parse_hour_ranges(settings.get("hours_peak_1_summer", "7-13"))
-        p2_hours = parse_hour_ranges(settings.get("hours_peak_2_summer", "19-22"))
-    else:
-        p1_hours = parse_hour_ranges(settings.get("hours_peak_1_winter", "7-13"))
-        p2_hours = parse_hour_ranges(settings.get("hours_peak_2_winter", "16-21"))
+    p1_hours = _get_peak_hours(
+        dt,
+        settings,
+        summer_key="hours_peak_1_summer",
+        winter_key="hours_peak_1_winter",
+        default="7-13",
+    )
+    p2_hours = _get_peak_hours(
+        dt,
+        settings,
+        summer_key="hours_peak_2_summer",
+        winter_key="hours_peak_2_winter",
+        default="16-21",
+    )
 
     if is_peak_time(dt, p1_hours):
         return settings.get("price_peak_1")

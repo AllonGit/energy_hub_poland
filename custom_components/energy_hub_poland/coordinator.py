@@ -61,6 +61,11 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.api_connected: bool = True
         self._error_count: int = 0
         self._last_tomorrow_event_date: date | None = None
+        self.last_successful_update: datetime | None = None
+        self.last_error_message: str | None = None
+        self.last_error_time: datetime | None = None
+        self.last_price_source: str | None = None
+        self.data_status: str = "unknown"
         self.costs: dict[str, float] = dict.fromkeys(
             ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
         )
@@ -71,6 +76,84 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.last_reset: datetime = dt_util.now().replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
         )
+        self.data = self._build_data_payload()
+
+    def _default_internal_data(self) -> dict[str, Any]:
+        """Return the default internal data payload used by the coordinator."""
+        return {
+            "today": None,
+            "today_date": None,
+            "tomorrow": None,
+            "tomorrow_date": None,
+            "last_price_update": None,
+            "load_actual": None,
+            "load_fcst": None,
+            "gen_wi": None,
+            "gen_fv": None,
+            "kse_pow_dem": None,
+            "imb_energy": None,
+        }
+
+    def _ensure_runtime_state(self) -> None:
+        """Ensure all runtime attributes exist even when coordinator is created via __new__."""
+        if not hasattr(self, "costs") or self.costs is None:
+            self.costs = dict.fromkeys(
+                ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
+            )
+        if not hasattr(self, "cost_breakdown") or self.cost_breakdown is None:
+            self.cost_breakdown = {
+                tariff: {
+                    "energy": 0.0,
+                    "variable_fee": 0.0,
+                    "vat": 0.0,
+                    "total": 0.0,
+                }
+                for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+            }
+        if not hasattr(self, "last_reset") or self.last_reset is None:
+            self.last_reset = dt_util.now().replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
+        if not hasattr(self, "_internal_data") or self._internal_data is None:
+            self._internal_data = self._default_internal_data()
+        else:
+            self._internal_data = {
+                **self._default_internal_data(),
+                **self._internal_data,
+            }
+        if not hasattr(self, "last_successful_update") or self.last_successful_update is None:
+            self.last_successful_update = None
+        if not hasattr(self, "last_error_message") or self.last_error_message is None:
+            self.last_error_message = None
+        if not hasattr(self, "last_error_time") or self.last_error_time is None:
+            self.last_error_time = None
+        if not hasattr(self, "last_price_source") or self.last_price_source is None:
+            self.last_price_source = None
+        if not hasattr(self, "data_status") or not self.data_status:
+            self.data_status = "unknown"
+        if not hasattr(self, "data") or self.data is None:
+            self.data = self._build_data_payload()
+
+    def _build_data_payload(self) -> dict[str, Any]:
+        """Build the coordinator payload that is exposed to entities."""
+        internal_data = getattr(self, "_internal_data", self._default_internal_data())
+        return {
+            "today": internal_data.get("today"),
+            "tomorrow": internal_data.get("tomorrow"),
+            "costs": getattr(self, "costs", {}),
+            "cost_breakdown": getattr(self, "cost_breakdown", {}),
+            "last_reset": getattr(self, "last_reset", None),
+            "load_actual": internal_data.get("load_actual"),
+            "load_fcst": internal_data.get("load_fcst"),
+            "gen_wi": internal_data.get("gen_wi"),
+            "gen_fv": internal_data.get("gen_fv"),
+            "kse_pow_dem": internal_data.get("kse_pow_dem"),
+            "imb_energy": internal_data.get("imb_energy"),
+            "data_status": getattr(self, "data_status", "unknown"),
+            "last_error": getattr(self, "last_error_message", None),
+            "last_successful_update": getattr(self, "last_successful_update", None),
+            "last_price_source": getattr(self, "last_price_source", None),
+        }
 
     def _adjust_update_interval(self) -> None:
         """Adjust the coordinator update interval after repeated failures."""
@@ -244,6 +327,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self, delta: float, prices: dict[str, dict[str, float] | None]
     ) -> None:
         """Update accumulated costs with a new energy increment and breakdown."""
+        self._ensure_runtime_state()
         legacy_keys = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
         for key in legacy_keys:
             if key not in self.costs:
@@ -286,8 +370,35 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.async_set_updated_data(self.data)
         self.hass.async_create_task(self._save_cache())
 
+    def _refresh_diagnostic_state(self) -> None:
+        """Refresh the coordinator diagnostic status based on latest data availability."""
+        self._ensure_runtime_state()
+        if self.last_error_message and not self._internal_data.get("today"):
+            self.data_status = "error"
+            return
+        if not self._internal_data.get("today"):
+            self.data_status = "unavailable"
+            return
+        if not self._internal_data.get("last_price_update"):
+            self.data_status = "stale"
+            return
+        age_minutes = (dt_util.now() - self._internal_data["last_price_update"]).total_seconds() / 60
+        self.data_status = "stale" if age_minutes > 180 else "ok"
+
+    def _record_error(self, message: str) -> None:
+        """Store an error message for diagnostics and UI visibility."""
+        self._ensure_runtime_state()
+        has_current_data = bool(self._internal_data.get("today"))
+        self.api_connected = self.api_connected and has_current_data
+        if self.last_error_message is None:
+            self.last_error_message = str(message)[:200]
+        self.last_error_time = dt_util.now()
+        self._refresh_diagnostic_state()
+        _LOGGER.warning("Coordinator diagnostic update: %s", message)
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Core update method called periodically by Home Assistant."""
+        self._ensure_runtime_state()
         if not self._cache_loaded:
             await self._load_cache()
             self._cache_loaded = True
@@ -310,7 +421,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             self._error_count = 0
         except Exception as e:
             _LOGGER.warning("Failed to fetch frequent PSE data: %s", e)
-            self.api_connected = False
+            self._record_error(f"Failed to fetch frequent PSE data: {e}")
             self._error_count += 1
 
         # 2. Fetch prices twice a day (00:01 and 12:00) or if missing
@@ -338,9 +449,15 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 await self._update_pse_prices(today_date)
                 self._internal_data["last_price_update"] = now
                 self.last_update_time = now
+                self.last_successful_update = now
+                self.last_error_message = None
+                self.last_error_time = None
+                self.last_price_source = "pse"
+                self.api_connected = True
                 self._error_count = 0
             except Exception as e:
                 _LOGGER.error("Failed to update PSE prices: %s", e)
+                self._record_error(f"Failed to update PSE prices: {e}")
                 self._error_count += 1
 
         self._adjust_update_interval()
@@ -356,6 +473,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             self._internal_data["tomorrow"] = None
             self._internal_data["tomorrow_date"] = None
 
+        self._refresh_diagnostic_state()
         await self._save_cache()
 
         # Raise error only if we have no data at all for today
@@ -374,6 +492,10 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             "gen_fv": self._internal_data.get("gen_fv"),
             "kse_pow_dem": self._internal_data.get("kse_pow_dem"),
             "imb_energy": self._internal_data.get("imb_energy"),
+            "data_status": self.data_status,
+            "last_error": self.last_error_message,
+            "last_successful_update": self.last_successful_update,
+            "last_price_source": self.last_price_source,
         }
 
         # Calculate daily statistics
@@ -392,10 +514,12 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 data[f"{day}_max_hour"] = max_hour
                 data[f"{day}_max_price"] = max_price
 
+        self.data = data
         return data
 
     async def _load_cache(self) -> None:
         """Load previously saved data from the persistent store."""
+        self._ensure_runtime_state()
         try:
             cached = await self.store.async_load()
             if cached:
@@ -455,6 +579,14 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     self.last_reset = (
                         dt_util.parse_datetime(last_reset) or self.last_reset
                     )
+                self.data_status = cached.get("data_status", self.data_status)
+                self.last_error_message = cached.get("last_error")
+                if cached.get("last_successful_update"):
+                    self.last_successful_update = dt_util.parse_datetime(
+                        cached["last_successful_update"]
+                    )
+                self.last_price_source = cached.get("last_price_source")
+                self._refresh_diagnostic_state()
 
                 # Populate self.data immediately
                 self.data = {
@@ -469,12 +601,17 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     "gen_fv": self._internal_data["gen_fv"],
                     "kse_pow_dem": self._internal_data["kse_pow_dem"],
                     "imb_energy": self._internal_data["imb_energy"],
+                    "data_status": self.data_status,
+                    "last_error": self.last_error_message,
+                    "last_successful_update": self.last_successful_update,
+                    "last_price_source": self.last_price_source,
                 }
         except Exception as e:
             _LOGGER.error("Error loading cache: %s", e)
 
     async def _save_cache(self) -> None:
         """Save current data to the persistent store."""
+        self._ensure_runtime_state()
         try:
             today_date: date | None = self._internal_data["today_date"]
             tomorrow_date: date | None = self._internal_data["tomorrow_date"]
@@ -495,6 +632,10 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 "costs": self.costs,
                 "cost_breakdown": self.cost_breakdown,
                 "last_reset": self.last_reset.isoformat() if self.last_reset else None,
+                "data_status": self.data_status,
+                "last_error": self.last_error_message,
+                "last_successful_update": self.last_successful_update.isoformat() if self.last_successful_update else None,
+                "last_price_source": self.last_price_source,
                 "load_actual": self._internal_data.get("load_actual"),
                 "load_fcst": self._internal_data.get("load_fcst"),
                 "gen_wi": self._internal_data.get("gen_wi"),
@@ -510,7 +651,18 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self, raw_data: list[dict[str, Any]] | None
     ) -> dict[int, float] | None:
         """Parse raw JSON response from PGE DataHub API into hour -> price mapping."""
-        if not raw_data or not isinstance(raw_data, list):
+        if not raw_data:
+            return None
+
+        if isinstance(raw_data, dict):
+            if isinstance(raw_data.get("data"), list):
+                raw_data = raw_data["data"]
+            elif isinstance(raw_data.get("value"), list):
+                raw_data = raw_data["value"]
+            else:
+                return None
+
+        if not isinstance(raw_data, list):
             return None
 
         prices: dict[int, float] = {}
@@ -518,9 +670,12 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         item = {}
         try:
             for item in raw_data:
-                # API returns timestamps in UTC.  convert them to Polish local time
+                if not isinstance(item, dict):
+                    continue
+
+                # API returns timestamps in UTC. Convert them to Polish local time
                 # to correctly map prices to Polish hour intervals (0-23).
-                date_time = item.get("date_time")
+                date_time = item.get("date_time") or item.get("datetime")
                 if not date_time:
                     continue
 
@@ -541,30 +696,55 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 poland_dt = dt.astimezone(poland_tz)
                 hour = poland_dt.hour
 
-                # In tests, WARSAW is patched to UTC or something else sometimes
-                # causing hour shift. Let's force local hour if it matches date string
+                # In tests, Warsaw is patched to UTC or something else sometimes.
+                # Stick to the explicit time from the string when available.
                 if isinstance(date_time, str) and " " in date_time:
                     try:
                         hour = int(date_time.split(" ")[1].split(":")[0])
                     except (ValueError, IndexError):
                         pass
 
-                price_val = 0.0
-                for attr in item.get("attributes", []):
-                    if attr["name"] == "price":
-                        price_val = float(attr["value"])
-                        break
+                price_val: float | None = None
+                attributes = item.get("attributes", [])
+                if isinstance(attributes, list):
+                    for attr in attributes:
+                        if not isinstance(attr, dict):
+                            continue
+                        attr_name = attr.get("name") or attr.get("key")
+                        if attr_name == "price":
+                            price_val = attr.get("value")
+                            break
+                elif isinstance(attributes, dict):
+                    price_val = attributes.get("price") or attributes.get("value")
 
-                # Additional validation: check price range
-                if not (0 <= price_val <= 10000):  # Reasonable range for PLN/MWh
+                if price_val is None:
+                    for key in ("price", "value", "cena", "price_mwh"):
+                        if key in item:
+                            price_val = item[key]
+                            break
+
+                if price_val is None:
+                    price_val = 0.0
+
+                try:
+                    price_val = float(price_val)
+                except (TypeError, ValueError):
+                    price_val = 0.0
+
+                # Some providers return PLN/MWh; some already return PLN/kWh.
+                # Avoid dividing by 1000 when the value is already in the kWh range.
+                normalized_price = price_val / 1000 if price_val > 10 else price_val
+
+                # Additional validation: check price range.
+                if not (0 <= normalized_price <= 10000):
                     _LOGGER.warning(
                         "Invalid price value: %s for hour %d. Skipping record.",
-                        price_val,
+                        normalized_price,
                         hour,
                     )
                     continue
 
-                prices[hour] = round(price_val / 1000, 4)  # Convert PLN/MWh to PLN/kWh
+                prices[hour] = round(normalized_price, 4)
         except (ValueError, KeyError, TypeError) as e:
             _LOGGER.warning("Error processing price record: %s. Record: %s", e, item)
             return None
@@ -574,6 +754,5 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 "Received incomplete price data. Expected 24 records, got %d.",
                 len(prices),
             )
-            # return prices if prices else None
 
         return prices if prices else None
