@@ -69,8 +69,12 @@ class ApiStatusBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return true if the API is currently reported as connected."""
-        return self.coordinator.api_connected
+        """Return true when the coordinator has healthy data and connectivity."""
+        data_status = getattr(self.coordinator, "data_status", "ok")
+        return bool(self.coordinator.api_connected) and data_status not in {
+            "error",
+            "unavailable",
+        }
 
 
 class PriceSpikeBinarySensor(EnergyHubBaseEntity, BinarySensorEntity):
