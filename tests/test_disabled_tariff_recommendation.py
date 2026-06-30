@@ -1,9 +1,7 @@
 """Test for disabled tariff in comparison mode (Issue fix)."""
 
-from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
-from zoneinfo import ZoneInfo
+from unittest.mock import MagicMock
 
 from custom_components.energy_hub_poland.const import (
     CONF_ENABLED_TARIFFS,
@@ -109,8 +107,7 @@ class TestDisabledTariffRecommendation:
         1. It's disabled (not in CONF_ENABLED_TARIFFS)
         2. Its cost is 0 (not configured)
         """
-        # Scenario: User has PGE, which provides G11, G12, G12W, G12N
-        # G13 is available but belongs to TAURON, so it's disabled
+
         enabled_tariffs = ["dynamic", "g11", "g12", "g12w", "g12n"]
         config = {
             CONF_ENABLED_TARIFFS: enabled_tariffs,
@@ -147,15 +144,13 @@ class TestDisabledTariffRecommendation:
 
         sensor = self._make_recommendation_sensor(config)
 
-        # The recommendation should be g12w (6.5), not g13 (0.0)
-        # because G13 is disabled and should not be considered
+
         recommendation = sensor.native_value
         print(f"Recommendation: {recommendation}")
         print(f"Enabled tariffs: {sensor._enabled_tariffs}")
         print(f"Costs: {sensor.coordinator.data['costs']}")
 
-        # The bug was: it recommended "g13" because 0.0 < 6.5
-        # The fix should recommend "g12w" because g13 is filtered out
+
         assert (
             recommendation != "g13"
         ), "BUG: G13 should not be recommended when disabled!"

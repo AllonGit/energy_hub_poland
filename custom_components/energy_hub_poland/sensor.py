@@ -465,15 +465,6 @@ class RecommendationSensor(EnergyConsumerEntity):
 
             # Fallback to current instantaneous prices
             prices = self._get_tariff_prices()
-            # Map tariff names to display names
-            tariff_to_display = {
-                "dynamic": "dynamiczna",
-                "g11": "g11",
-                "g12": "g12",
-                "g12w": "g12w",
-                "g12n": "g12n",
-                "g13": "g13",
-            }
             # Filter mapping to only enabled tariffs
             filtered = {
                 tariff: float(prices[tariff])
