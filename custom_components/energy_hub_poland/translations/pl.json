@@ -230,6 +230,20 @@
           }
         }
       },
+      "price_status": {
+        "name": "Status ceny",
+        "state": {
+          "cheap": "Tania",
+          "normal": "Normalna",
+          "expensive": "Droga"
+        }
+      },
+      "best_usage_hour": {
+        "name": "Najlepsza godzina uruchomienia"
+      },
+      "savings_potential": {
+        "name": "Potencjalne oszczędności"
+      },
       "current_price_dynamic": {
         "name": "Aktualna cena DYNAMICZNA",
         "state_attributes": {

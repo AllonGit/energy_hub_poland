@@ -19,7 +19,7 @@
 
 **Energy Hub Poland** to zaawansowana integracja dla Home Assistant, zaprojektowana specjalnie dla polskiego rynku energii. Pozwala na monitorowanie cen prądu, analizę kosztów oraz optymalizację zużycia energii w oparciu o rzeczywiste taryfy (w tym dynamiczne RCE).
 
-Unikalną cechą jest **Tryb Porównania**, który analizuje Twoje zużycie i podpowiada, która taryfa byłaby dla Ciebie najbardziej opłacalna.
+Unikalną cechą jest **Tryb Porównania**, który analizuje Twoje zużycie i podpowiada, która taryfa byłaby dla Ciebie najbardziej opłacalna. Od najnowszych aktualizacji integracja udostępnia także praktyczne sensory wspierające codzienną automatyzację, takie jak status ceny, najlepsza godzina uruchomienia obciążenia i potencjał oszczędności.
 
 ## 🌟 Możliwości i Tryby Pracy
 
@@ -31,6 +31,7 @@ Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
 * Prezentuje ceny netto (bez VAT i opłat dystrybucyjnych).
 * Możliwość doliczenia **opłat dystrybucyjnych** (stałych i zmiennych).
 * Opcjonalne automatyczne doliczanie **23% VAT**.
+* Dostarcza dodatkowe sensory praktyczne: status ceny (`cheap/normal/expensive`), najlepszą godzinę uruchomienia obciążenia oraz potencjał oszczędności.
 
 ### 2. 🏠 Tryb G12
 Klasyczna taryfa dwustrefowa zdefiniowana przez użytkownika.
@@ -69,9 +70,14 @@ Najpotężniejsza funkcja integracji.
 
 ---
 
-### 🆕 Co nowego (Wersja 1.3.3)
+### 🆕 Co nowego
 
-Kod został uporządkowany i odświeżony pod kątem czytelności i łatwości utrzymania. Część logiki pomocniczej została wydzielona do osobnego modułu, a kluczowe ścieżki taryfowe są teraz bardziej przejrzyste.`
+Najnowsze aktualizacje dodają do integracji kilka praktycznych sensorów dla trybu dynamicznego:
+* **Status ceny** – klasyfikuje bieżącą cenę jako tania, normalna lub droga.
+* **Najlepsza godzina uruchomienia** – wskazuje najkorzystniejszą godzinę do uruchomienia obciążenia.
+* **Potencjał oszczędności** – pokazuje, ile można zaoszczędzić, przesuwając zużycie na najtańszą godzinę.
+
+Dodatkowo poprawiono stabilność logiki sensorów i rozszerzono pokrycie testami regresyjnymi.
 
 ---
 
@@ -80,6 +86,7 @@ Kod został uporządkowany i odświeżony pod kątem czytelności i łatwości u
 Oto jak możesz wykorzystać Energy Hub Poland w swoich automatyzacjach:
 
 * **Inteligentne ładowanie:** Uruchom ładowarkę EV tylko wtedy, gdy cena w taryfie dynamicznej spadnie poniżej ustalonego progu.
+* **Automatyzacje oparte na statusie ceny:** Włącz urządzenie, gdy sensor statusu ceny pokaże `cheap`, albo odłóż pracę, gdy cena jest `expensive`.
 * **Powiadomienia o oszczędnościach:** Otrzymuj powiadomienie na koniec miesiąca z informacją z Trybu Porównania: *"Gdybyś używał taryfy G12w, zaoszczędziłbyś 50 PLN w tym miesiącu"*.
 
 ---

@@ -18,7 +18,25 @@ Aby widzieć koszty w panelu Energy:
 2. W sekcji "Zużycie energii elektrycznej" wybierz swój sensor zużycia.
 3. Wybierz opcję "Użyj encji z ceną energii" i wskaż sensor `sensor.energy_hub_sensor_ceny_aktualnej_twojej_teryfy`.
 
-## 4. Testy i rozwój lokalny
+## 4. Nowe sensory w trybie dynamicznym
+Po aktywacji trybu dynamicznego integracja udostępnia dodatkowe sensory, które pomagają w automatyzacjach:
+- `price_status` – klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`.
+- `best_usage_hour` – wskazuje najkorzystniejszą godzinę uruchomienia obciążenia.
+- `savings_potential` – pokazuje przewidywane oszczędności przy przesunięciu zużycia na najtańszą godzinę.
+
+Przykład automatyzacji:
+```yaml
+action:
+  - service: switch.turn_on
+    target:
+      entity_id: switch.ladowarka_ev
+    condition:
+      - condition: state
+        entity_id: sensor.energy_hub_status_ceny
+        state: cheap
+```
+
+## 5. Testy i rozwój lokalny
 Jeśli chcesz sprawdzić integrację lokalnie lub rozwijać ją dalej, warto uruchomić testy projektu:
 
 ```bash
@@ -27,7 +45,7 @@ pytest
 
 Komponent jest napisany w Pythonie i jest ładowany przez Home Assistant bez osobnego procesu kompilacji. Najważniejsze jest, aby zachować zgodność z aktualnym API Home Assistant oraz poprawność importów i logiki biznesowej.
 
-## 5. Import / eksport profili taryfowych
+## 6. Import / eksport profili taryfowych
 Energy Hub Poland obsługuje eksport i import profili taryfowych w formatach **JSON** i **CSV**. Dzięki temu możesz:
 - zapisać konfigurację taryfy jako kopię zapasową,
 - przenieść ustawienia między instancjami Home Assistanta,
@@ -51,7 +69,7 @@ data:
   path: "energy_hub_poland_profile.csv"
 ```
 
-## 6. Podział kosztów
+## 7. Podział kosztów
 W trybie porównawczym oraz w cenach bieżących integracja teraz raportuje wszystkie składowe kosztu:
 - `energy` – koszt samej energii,
 - `variable_fee` – zmienna opłata sieciowa,

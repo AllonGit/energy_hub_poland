@@ -334,6 +334,15 @@
       "highest_price_hour_tomorrow": {
         "name": "Highest price hour tomorrow"
       },
+      "price_status": {
+        "name": "Price status"
+      },
+      "best_usage_hour": {
+        "name": "Best usage hour"
+      },
+      "savings_potential": {
+        "name": "Savings potential"
+      },
       "kse_load": {
         "name": "KSE: Energy Load"
       },

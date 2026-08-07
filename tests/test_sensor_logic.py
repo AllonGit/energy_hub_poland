@@ -1,8 +1,10 @@
 """Tests for sensor logic (price sensors, cost sensors, energy delta)."""
 
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+from homeassistant.components.sensor import SensorDeviceClass
 
 from custom_components.energy_hub_poland.const import (
     CONF_PRICE_UNIT,
@@ -15,10 +17,13 @@ from custom_components.energy_hub_poland.const import (
 # Import sensor classes
 from custom_components.energy_hub_poland.sensor import (
     AveragePriceSensor,
+    BestUsageHourSensor,
     CurrentPriceSensor,
     EnergyConsumerEntity,
     LowestPriceHourSensor,
     MinMaxPriceSensor,
+    PriceStatusSensor,
+    SavingsPotentialSensor,
 )
 from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
@@ -61,6 +66,102 @@ class TestConvertPrice:
     def test_none_returns_none(self):
         entity = self._make_entity(UNIT_KWH)
         assert entity._convert_price(None) is None
+
+
+class TestPriceStatusSensor:
+    def _make_sensor(self, prices, threshold=30):
+        entry = _make_entry(data={CONF_PRICE_UNIT: UNIT_KWH})
+        coord = MagicMock()
+        coord.data = {"today": prices}
+
+        sensor = PriceStatusSensor.__new__(PriceStatusSensor)
+        sensor.coordinator = coord
+        sensor._config = {**entry.data, **entry.options}
+        sensor._price_unit = UNIT_KWH
+        sensor._attr_translation_key = "price_status"
+        sensor._attr_unique_id = "price_status_test"
+        sensor._config["spike_threshold"] = threshold
+        return sensor
+
+    def test_status_expensive_when_price_far_above_average(self):
+        sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.4})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 2, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "expensive"
+
+    def test_status_cheap_when_price_far_below_average(self):
+        sensor = self._make_sensor({0: 0.05, 1: 0.05, 2: 0.40})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 0, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "cheap"
+
+    def test_status_normal_when_within_threshold(self):
+        sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.25})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 2, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "normal"
+
+    def test_uses_enum_device_class_for_state_options(self):
+        sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.25})
+        assert sensor._attr_device_class == SensorDeviceClass.ENUM
+
+
+class TestBestUsageHourSensor:
+    def _make_sensor(self, today_prices, tomorrow_prices=None):
+        entry = _make_entry(data={CONF_PRICE_UNIT: UNIT_KWH})
+        coord = MagicMock()
+        coord.data = {"today": today_prices, "tomorrow": tomorrow_prices or {}}
+
+        sensor = BestUsageHourSensor.__new__(BestUsageHourSensor)
+        sensor.coordinator = coord
+        sensor._config = {**entry.data, **entry.options}
+        sensor._price_unit = UNIT_KWH
+        sensor._attr_translation_key = "best_usage_hour"
+        sensor._attr_unique_id = "best_usage_hour_test"
+        return sensor
+
+    def test_prefers_a_future_hour_today(self):
+        sensor = self._make_sensor({0: 0.50, 1: 0.20, 2: 0.40})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 0, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "01:00"
+
+    def test_falls_back_to_tomorrow_when_today_is_empty(self):
+        sensor = self._make_sensor({}, {0: 0.35, 1: 0.25})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 23, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "01:00"
+
+    def test_prefers_the_cheapest_future_hour_today(self):
+        sensor = self._make_sensor({0: 0.50, 1: 0.20, 2: 0.40, 23: 0.10})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == "23:00"
+
+
+class TestSavingsPotentialSensor:
+    def _make_sensor(self, prices, current_hour=2):
+        entry = _make_entry(data={CONF_PRICE_UNIT: UNIT_KWH})
+        coord = MagicMock()
+        coord.data = {"today": prices}
+
+        sensor = SavingsPotentialSensor.__new__(SavingsPotentialSensor)
+        sensor.coordinator = coord
+        sensor._config = {**entry.data, **entry.options}
+        sensor._price_unit = UNIT_KWH
+        sensor._attr_translation_key = "savings_potential"
+        sensor._attr_unique_id = "savings_potential_test"
+        return sensor
+
+    def test_returns_positive_savings_when_moving_to_cheapest_hour(self):
+        sensor = self._make_sensor({0: 0.50, 1: 0.20, 2: 0.40})
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 2, 0, 0, tzinfo=CET)
+            assert sensor.native_value == 0.2
+
+    def test_returns_none_when_prices_missing(self):
+        sensor = self._make_sensor({})
+        assert sensor.native_value is None
 
 
 # ============================================================

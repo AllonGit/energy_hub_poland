@@ -10,6 +10,11 @@ Zanim zgłosisz błąd, sprawdź poniższe najczęstsze sytuacje.
 - **Składniki zmienne:** Upewnij się, że w konfiguracji taryfy G12/G12w podałeś ceny brutto (jeśli takie chcesz widzieć) wraz ze wszystkimi opłatami zmiennymi.
 - **Strefy czasowe:** Integracja automatycznie przelicza czas UTC na czas polski. Sprawdź, czy Twój Home Assistant ma poprawnie ustawioną strefę czasową (`Europe/Warsaw`).
 
+### 📊 Nowe sensory nie pokazują się lub są puste
+- **Sprawdź tryb pracy:** Sensory typu `price_status`, `best_usage_hour` i `savings_potential` są dostępne głównie w trybie dynamicznym.
+- **Poczekaj na dane:** Jeśli nie ma jeszcze pełnego zestawu danych dla dzisiaj lub jutra, niektóre sensory mogą zwracać brak danych.
+- **Sprawdź logi:** Jeśli sensor jest zarejestrowany, ale nie ma wartości, sprawdź logi Home Assistant pod kątem błędów związanych z aktualizacją coordinatora.
+
 ### 🧪 Brak błędów po aktualizacji, ale integracja nie działa
 - **Brak kompilacji:** To jest komponent Pythona, więc nie ma osobnego etapu builda ani kompilacji.
 - **Sprawdź logi i testy:** Jeśli pracujesz nad zmianami lokalnie, uruchom `pytest`, aby szybko wykryć problemy z importami lub logiką.

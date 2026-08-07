@@ -19,7 +19,7 @@
 
 **Energy Hub Poland** is an advanced Home Assistant integration designed specifically for the Polish energy market. It allows you to monitor electricity prices, analyze costs, and optimize energy consumption based on actual tariffs (including dynamic RCE rates).
 
-A unique feature is the **Comparison Mode**, which analyzes your consumption patterns and recommends the most cost-effective tariff for your household.
+A unique feature is the **Comparison Mode**, which analyzes your consumption patterns and recommends the most cost-effective tariff for your household. Recent updates also add practical sensors for everyday automations, including price status, the best hour to run a load, and savings potential.
 
 ## 🌟 Features and Operation Modes
 
@@ -29,6 +29,7 @@ The integration supports four main operational modes:
 Fetches hourly market rates directly from PSE/TGE (Polish Power Exchange).
 * Perfect for prosumers on net-billing.
 * Displays net prices (excluding VAT and distribution fees).
+* Includes practical sensors such as price status (`cheap/normal/expensive`), the best hour to run a load, and savings potential.
 
 ### 2. 🏠 G12 Mode
 Classic Time-of-Use (ToU) tariff defined by the user.
@@ -48,9 +49,14 @@ The integration's most powerful feature.
 
 ---
 
-### 🆕 What's New (Version 1.3.3)
+### 🆕 What's New
 
-The codebase has been cleaned up and reorganized for better readability and maintainability. A portion of the helper logic was extracted into a dedicated module, and the tariff-related flow is now easier to follow.
+Recent updates add several practical sensors for Dynamic Mode:
+* **Price status** – classifies the current price as cheap, normal, or expensive.
+* **Best usage hour** – suggests the most favorable hour to run a load.
+* **Savings potential** – shows how much can be saved by shifting usage to the cheapest hour.
+
+The sensor logic was also stabilized and expanded with regression tests.
 
 ---
 
@@ -80,6 +86,7 @@ The codebase has been cleaned up and reorganized for better readability and main
 Here is how you can leverage Energy Hub Poland in your automations:
 
 * **Smart Charging:** Start your EV charger only when the dynamic tariff price drops below a certain threshold.
+* **Automation based on price status:** Switch on a device when the price status sensor reports `cheap`, or delay it when it reports `expensive`.
 * **Savings Alerts:** Receive a notification at the end of the month with insights from Comparison Mode: *"If you used the G12w tariff, you would have saved 50 PLN this month."*
 * **Visual Indicators:** Change your living room light color to red when the current energy price is in the daily peak range.
 

@@ -79,6 +79,9 @@ async def async_setup_entry(
     if mode == MODE_DYNAMIC:
         sensors.extend(setup_dynamic_sensors(coordinator, entry))
         sensors.extend(setup_pse_sensors(coordinator, entry))
+        sensors.append(PriceStatusSensor(coordinator, entry))
+        sensors.append(BestUsageHourSensor(coordinator, entry))
+        sensors.append(SavingsPotentialSensor(coordinator, entry))
     elif mode == MODE_G12:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12", config))
     elif mode == MODE_G12W:
@@ -189,6 +192,35 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         if price_unit == UNIT_MWH:
             return round(value * 1000, 2)
         return round(value, 4)
+
+    def _get_price_series(self, day: str) -> dict[int, float] | None:
+        """Return the price series for the selected day from coordinator data."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get(day)
+
+    def _get_relevant_price_series(self) -> tuple[dict[int, float], str]:
+        """Return price data for the current or next relevant period."""
+        if not self.coordinator.data:
+            return {}, "none"
+
+        now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+
+        today_prices = self.coordinator.data.get("today", {}) or {}
+        tomorrow_prices = self.coordinator.data.get("tomorrow", {}) or {}
+
+        future_today = {
+            hour: price for hour, price in today_prices.items() if hour >= poland_now.hour
+        }
+        if future_today:
+            return future_today, "today"
+        if tomorrow_prices:
+            return tomorrow_prices, "tomorrow"
+        if today_prices:
+            return today_prices, "today"
+        return {}, "none"
 
     def _calculate_total_price(
         self, energy_price: float | None, tariff: str
@@ -479,6 +511,154 @@ class RecommendationSensor(EnergyConsumerEntity):
                     2,
                 )
         return attrs
+
+
+class PriceStatusSensor(EnergyHubSensorEntity):
+    """Sensor that classifies the current dynamic price as cheap, normal or expensive."""
+
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_state_class = None
+    _attr_icon = "mdi:chart-line"
+    _attr_options = ["cheap", "normal", "expensive"]
+
+    def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
+        """Initialize the price status sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "price_status"
+        self._attr_unique_id = f"price_status_{entry.entry_id}"
+
+    def _get_current_price(self) -> float | None:
+        """Return the current dynamic price from coordinator data."""
+        if not self.coordinator.data:
+            return None
+
+        now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+        today_prices = self.coordinator.data.get("today", {})
+        return today_prices.get(poland_now.hour) if today_prices else None
+
+    def _get_average_price(self) -> float | None:
+        """Return the average dynamic price for the current day."""
+        if not self.coordinator.data:
+            return None
+
+        today_prices = self.coordinator.data.get("today", {})
+        if not today_prices:
+            return None
+
+        today_avg = self.coordinator.data.get("today_avg")
+        if today_avg is not None:
+            return today_avg
+        return sum(today_prices.values()) / len(today_prices)
+
+    @property
+    def native_value(self) -> str | None:
+        """Return a simple cheap/normal/expensive classification."""
+        current_price = self._get_current_price()
+        average_price = self._get_average_price()
+        if current_price is None or average_price is None:
+            return None
+
+        threshold = self._config.get("spike_threshold", 30)
+        try:
+            threshold_value = float(threshold)
+        except (TypeError, ValueError):
+            threshold_value = 30.0
+
+        if average_price == 0:
+            return "cheap" if current_price <= 0 else "expensive" if current_price > 0 else "normal"
+
+        lower_bound = average_price * (1 - threshold_value / 100)
+        upper_bound = average_price * (1 + threshold_value / 100)
+
+        if current_price < lower_bound:
+            return "cheap"
+        if current_price > upper_bound:
+            return "expensive"
+        return "normal"
+
+
+class BestUsageHourSensor(EnergyHubSensorEntity):
+    """Sensor suggesting the cheapest hour to run a load today or tomorrow."""
+
+    _attr_device_class = None
+    _attr_state_class = None
+    _attr_icon = "mdi:clock-start"
+
+    def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
+        """Initialize the best usage hour sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "best_usage_hour"
+        self._attr_unique_id = f"best_usage_hour_{entry.entry_id}"
+
+    def _get_hour_candidates(self) -> tuple[dict[int, float], str]:
+        """Return price map and source label for the next relevant period."""
+        return self._get_relevant_price_series()
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the best hour in HH:00 format."""
+        prices, _ = self._get_hour_candidates()
+        if not prices:
+            return None
+
+        min_price = min(prices.values())
+        hour = [h for h, p in prices.items() if p == min_price][0]
+        return f"{hour:02d}:00"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose the selected price and source for automation use."""
+        prices, source = self._get_hour_candidates()
+        if not prices:
+            return {"price": None, "source": source}
+
+        min_price = min(prices.values())
+        total_price = self._calculate_total_price(min_price, "dynamic")
+        return {
+            "price": self._convert_price(total_price),
+            "source": source,
+        }
+
+
+class SavingsPotentialSensor(EnergyHubSensorEntity):
+    """Sensor showing potential savings if the current load is moved to the cheapest hour."""
+
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = None
+    _attr_icon = "mdi:cash-multiple"
+
+    def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
+        """Initialize the savings potential sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_translation_key = "savings_potential"
+        self._attr_unique_id = f"savings_potential_{entry.entry_id}"
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the savings potential for moving current usage to the cheapest hour."""
+        if not self.coordinator.data:
+            return None
+
+        today_prices = self._get_price_series("today") or {}
+        if not today_prices:
+            return None
+
+        now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+        current_price = today_prices.get(poland_now.hour)
+        if current_price is None:
+            return None
+
+        min_price = min(today_prices.values())
+        if min_price >= current_price:
+            return None
+
+        savings = current_price - min_price
+        total_price = self._calculate_total_price(savings, "dynamic")
+        return self._convert_price(total_price)
 
 
 class CurrentPriceSensor(EnergyHubSensorEntity):

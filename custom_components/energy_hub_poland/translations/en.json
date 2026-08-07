@@ -233,6 +233,20 @@
           }
         }
       },
+      "price_status": {
+        "name": "Price status",
+        "state": {
+          "cheap": "Cheap",
+          "normal": "Normal",
+          "expensive": "Expensive"
+        }
+      },
+      "best_usage_hour": {
+        "name": "Best usage hour"
+      },
+      "savings_potential": {
+        "name": "Savings potential"
+      },
       "current_price_dynamic": {
         "name": "Current price DYNAMIC",
         "state_attributes": {
