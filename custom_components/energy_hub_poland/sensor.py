@@ -370,7 +370,7 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
         }
 
 
-class TariffCostSensor(EnergyHubSensorEntity):
+class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
     """Sensor representing the accumulated cost for a specific tariff."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
