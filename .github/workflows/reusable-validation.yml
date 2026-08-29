@@ -34,7 +34,9 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements_test.txt
+          cache-dependency-path: |
+            requirements.txt
+            requirements_test.txt
       - name: Install test dependencies
         run: pip install -r requirements_test.txt
       - name: Run pytest
