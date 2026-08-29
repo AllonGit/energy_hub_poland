@@ -2,7 +2,7 @@
 
 import functools
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 import holidays
@@ -57,7 +57,7 @@ def is_summer(dt: datetime) -> bool:
 
     try:
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         poland_dt = dt.astimezone(ZoneInfo("Europe/Warsaw"))
         return 4 <= poland_dt.month <= 9
     except Exception:

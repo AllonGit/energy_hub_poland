@@ -121,7 +121,10 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 **self._default_internal_data(),
                 **self._internal_data,
             }
-        if not hasattr(self, "last_successful_update") or self.last_successful_update is None:
+        if (
+            not hasattr(self, "last_successful_update")
+            or self.last_successful_update is None
+        ):
             self.last_successful_update = None
         if not hasattr(self, "last_error_message") or self.last_error_message is None:
             self.last_error_message = None
@@ -375,7 +378,9 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         if not self._internal_data.get("last_price_update"):
             self.data_status = "stale"
             return
-        age_minutes = (dt_util.now() - self._internal_data["last_price_update"]).total_seconds() / 60
+        age_minutes = (
+            dt_util.now() - self._internal_data["last_price_update"]
+        ).total_seconds() / 60
         self.data_status = "stale" if age_minutes > 180 else "ok"
 
     def _record_error(self, message: str) -> None:
@@ -630,7 +635,9 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 "last_reset": self.last_reset.isoformat() if self.last_reset else None,
                 "data_status": self.data_status,
                 "last_error": self.last_error_message,
-                "last_successful_update": self.last_successful_update.isoformat() if self.last_successful_update else None,
+                "last_successful_update": self.last_successful_update.isoformat()
+                if self.last_successful_update
+                else None,
                 "last_price_source": self.last_price_source,
                 "load_actual": self._internal_data.get("load_actual"),
                 "load_fcst": self._internal_data.get("load_fcst"),
