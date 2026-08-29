@@ -30,7 +30,6 @@ class _StubBinarySensorEntity:
 
 
 class _StubRestoreEntity:
->>>>>>> a14181e54184bdc9d160e7067dd3870cad449546
     # Tests set ``_mock_last_state`` on the instance to control the restored
     # state. Assigning the attribute (rather than patching the method) keeps
     # ``async_get_last_state`` resolving through the MRO, so a class that fails
