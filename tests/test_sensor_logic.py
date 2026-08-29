@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.components.sensor import SensorDeviceClass
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.energy_hub_poland.const import (
     CONF_PRICE_UNIT,
@@ -383,3 +384,74 @@ class TestGetEnergyDelta:
         delta = entity._get_energy_delta(0.0)
         # current < last → energy_delta = current = 0.0
         assert delta == 0.0
+
+
+# ============================================================
+# TariffCostSensor.async_added_to_hass — state restoration
+# ============================================================
+
+ALL_TARIFFS = ("dynamic", "g11", "g12", "g12w", "g12n", "g13")
+
+
+class TestTariffCostSensorRestore:
+    """Regression tests for cost-sensor state restoration.
+
+    ``TariffCostSensor.async_added_to_hass`` calls ``async_get_last_state()``,
+    which is provided by ``RestoreEntity``. If the class does not inherit it,
+    every cost entity raises AttributeError while being added and ends up
+    permanently ``unavailable``.
+    """
+
+    def _make_sensor(self, tariff="g11", costs=None):
+        coord = MagicMock()
+        coord.costs = costs if costs is not None else dict.fromkeys(ALL_TARIFFS, 0.0)
+        coord.data = {"costs": coord.costs}
+
+        sensor = TariffCostSensor.__new__(TariffCostSensor)
+        sensor.coordinator = coord
+        sensor._config = {}
+        sensor._price_unit = UNIT_KWH
+        sensor._tariff = tariff
+        sensor._attr_translation_key = f"cost_{tariff}"
+        sensor._attr_unique_id = f"cost_{tariff}_{ENTRY_ID}"
+        return sensor
+
+    def test_inherits_restore_entity(self):
+        assert issubclass(TariffCostSensor, RestoreEntity)
+
+    async def test_restores_previous_cost_into_coordinator(self):
+        sensor = self._make_sensor("g11")
+        sensor._mock_last_state = SimpleNamespace(state="12.34")
+
+        await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 12.34
+        sensor.coordinator.async_set_updated_data.assert_called_once()
+
+    async def test_does_not_overwrite_already_accumulated_costs(self):
+        costs = dict.fromkeys(ALL_TARIFFS, 0.0)
+        costs["g11"] = 5.0
+        sensor = self._make_sensor("g11", costs=costs)
+        sensor._mock_last_state = SimpleNamespace(state="12.34")
+
+        await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 5.0
+        sensor.coordinator.async_set_updated_data.assert_not_called()
+
+    async def test_ignores_unparsable_restored_state(self):
+        sensor = self._make_sensor("g11")
+        sensor._mock_last_state = SimpleNamespace(state="unavailable")
+
+        await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 0.0
+        sensor.coordinator.async_set_updated_data.assert_not_called()
+
+    async def test_handles_no_previous_state(self):
+        sensor = self._make_sensor("g11")
+
+        await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 0.0
+        sensor.coordinator.async_set_updated_data.assert_not_called()
