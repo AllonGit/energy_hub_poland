@@ -16,3 +16,5 @@ permissions:
 jobs:
   validate:
     uses: ./.github/workflows/reusable-validation.yml
+    with:
+      run-contract-tests: ${{ github.event_name == 'schedule' }}
