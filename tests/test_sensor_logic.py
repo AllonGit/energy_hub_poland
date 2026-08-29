@@ -2,8 +2,9 @@
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.components.sensor import SensorDeviceClass
 
 from custom_components.energy_hub_poland.const import (
@@ -24,6 +25,7 @@ from custom_components.energy_hub_poland.sensor import (
     MinMaxPriceSensor,
     PriceStatusSensor,
     SavingsPotentialSensor,
+    TariffCostSensor,
 )
 from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
@@ -162,6 +164,31 @@ class TestSavingsPotentialSensor:
     def test_returns_none_when_prices_missing(self):
         sensor = self._make_sensor({})
         assert sensor.native_value is None
+
+
+class TestTariffCostSensor:
+    @pytest.mark.asyncio
+    async def test_restores_own_state_even_when_other_tariffs_are_non_zero(self):
+        entry = _make_entry(data={CONF_PRICE_UNIT: UNIT_KWH})
+        coord = MagicMock()
+        coord.data = {}
+        coord.costs = {"dynamic": 12.34, "g11": 0.0}
+        coord.async_set_updated_data = MagicMock()
+
+        sensor = TariffCostSensor.__new__(TariffCostSensor)
+        sensor.coordinator = coord
+        sensor._config = {**entry.data, **entry.options}
+        sensor._tariff = "g11"
+        sensor._attr_translation_key = "cost_g11"
+        sensor._attr_unique_id = "cost_g11_test"
+        sensor.async_get_last_state = AsyncMock(
+            return_value=SimpleNamespace(state="7.89")
+        )
+
+        await sensor.async_added_to_hass()
+
+        assert coord.costs["g11"] == 7.89
+        coord.async_set_updated_data.assert_called_once_with(coord.data)
 
 
 # ============================================================

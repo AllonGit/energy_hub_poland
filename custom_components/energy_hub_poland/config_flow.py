@@ -172,6 +172,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                                 MODE_DYNAMIC,
                                 MODE_G12,
                                 MODE_G12W,
+                                MODE_G12N,
                                 MODE_COMPARISON,
                             ],
                             mode=SelectSelectorMode.DROPDOWN,
@@ -196,6 +197,8 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 return await self.async_step_g12_config()
             if mode == MODE_G12W:
                 return await self.async_step_g12w_config()
+            if mode == MODE_G12N:
+                return await self.async_step_g12n_config()
             if mode == MODE_COMPARISON:
                 return await self.async_step_tariff_selection()
 
@@ -651,6 +654,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             MODE_DYNAMIC: "Energy Hub Dynamic",
             MODE_G12: "Energy Hub G12",
             MODE_G12W: "Energy Hub G12w",
+            MODE_G12N: "Energy Hub G12n",
             MODE_COMPARISON: "Energy Hub Comparison",
         }
         title = title_map.get(self.config_data[CONF_OPERATION_MODE], "Energy Hub")

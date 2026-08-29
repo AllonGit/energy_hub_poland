@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Select Operation Mode - Energy Hub",
-        "description": "Choose how the integration should operate:\n- **Dynamic Tariff (RCE):** Monitoring market prices.\n- **Virtual G12/G12w Tariff:** Cost simulation for fixed tariffs.\n- **Comparison Mode:** Real-time comparison of all tariffs (G11, G12, G12w, G12n, G13).",
+        "description": "Choose how the integration should operate:\n- **Dynamic Tariff (RCE):** Monitoring market prices.\n- **Virtual G12/G12w/G12n Tariff:** Cost simulation for fixed tariffs.\n- **Comparison Mode:** Real-time comparison of all tariffs (G11, G12, G12w, G12n, G13).",
         "data": {
           "operation_mode": "Operation Mode"
         }
@@ -162,6 +162,7 @@
         "dynamic": "Dynamic Tariff (RCE)",
         "g12": "Virtual G12 Tariff",
         "g12w": "Virtual G12w Tariff",
+        "g12n": "Virtual G12n Tariff",
         "comparison": "Comparison Mode (all tariffs)"
       }
     },

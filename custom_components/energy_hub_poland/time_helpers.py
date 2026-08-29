@@ -2,7 +2,8 @@
 
 import functools
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import holidays
 
@@ -53,4 +54,12 @@ def is_peak_time(dt: datetime, peak_hours: list[tuple[int, int]]) -> bool:
 
 def is_summer(dt: datetime) -> bool:
     """Return True when the date falls in the summer tariff season."""
-    return 4 <= dt.month <= 9
+
+    try:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        poland_dt = dt.astimezone(ZoneInfo("Europe/Warsaw"))
+        return 4 <= poland_dt.month <= 9
+    except Exception:
+        # Fallback to naive month check if conversion fails for any reason
+        return 4 <= dt.month <= 9

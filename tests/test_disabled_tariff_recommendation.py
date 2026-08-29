@@ -1,7 +1,9 @@
 """Test for disabled tariff in comparison mode (Issue fix)."""
 
+from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from custom_components.energy_hub_poland.const import (
     CONF_ENABLED_TARIFFS,
@@ -157,6 +159,20 @@ class TestDisabledTariffRecommendation:
         assert (
             recommendation == "g12w"
         ), f"Expected recommendation 'g12w' but got '{recommendation}'"
+
+    def test_tariff_prices_return_cost_breakdown(self):
+        """Test that tariff price values include split cost components and total."""
+        sensor = self._make_recommendation_sensor()
+        sensor.coordinator.data = {"today": {0: 0.35, 1: 0.32}}
+
+        frozen_now = datetime(2024, 1, 1, 0, tzinfo=ZoneInfo("Europe/Warsaw"))
+        with patch("custom_components.energy_hub_poland.sensor.dt_util.now", return_value=frozen_now):
+            prices = sensor._get_tariff_prices()
+
+        assert "dynamic" in prices
+        assert isinstance(prices["dynamic"], dict)
+        assert set(prices["dynamic"]) == {"energy", "variable_fee", "vat", "total"}
+        assert prices["dynamic"]["total"] > prices["dynamic"]["energy"]
 
     def test_attributes_exclude_disabled_tariffs(self):
         """Test that extra_state_attributes only includes enabled tariffs."""

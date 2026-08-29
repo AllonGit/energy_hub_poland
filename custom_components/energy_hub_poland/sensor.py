@@ -46,6 +46,7 @@ from .const import (
     MODE_COMPARISON,
     MODE_DYNAMIC,
     MODE_G12,
+    MODE_G12N,
     MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
@@ -86,6 +87,8 @@ async def async_setup_entry(
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12", config))
     elif mode == MODE_G12W:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12w", config))
+    elif mode == MODE_G12N:
+        sensors.append(CurrentPriceSensor(coordinator, entry, "g12n", config))
     elif mode == MODE_COMPARISON:
         sensors.extend(setup_comparison_sensors(coordinator, entry, config))
 
@@ -224,8 +227,8 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
 
     def _calculate_total_price(
         self, energy_price: float | None, tariff: str
-    ) -> float | None:
-        """Apply network fees and VAT to the energy price."""
+    ) -> dict[str, float] | None:
+        """Apply network fees and VAT to the energy price and return split components."""
         if energy_price is None:
             return None
 
@@ -277,7 +280,6 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE, 0.0)
 
         variable_fee = float(variable_fee)
-
         total_net = energy_price + variable_fee
 
         vat_rate_str = self._config.get(CONF_VAT_RATE, "0")
@@ -286,7 +288,14 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         except (ValueError, TypeError):
             vat_rate = 0.0
 
-        return total_net * (1 + vat_rate)
+        vat_amount = total_net * vat_rate
+        total = total_net * (1 + vat_rate)
+        return {
+            "energy": float(energy_price),
+            "variable_fee": float(variable_fee),
+            "vat": float(vat_amount),
+            "total": float(total),
+        }
 
 
 class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
@@ -336,8 +345,8 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
         self._last_energy_reading = current_energy
         return energy_delta
 
-    def _get_tariff_prices(self) -> dict[str, float | None]:
-        """Get the current price for all supported tariffs."""
+    def _get_tariff_prices(self) -> dict[str, dict[str, float] | None]:
+        """Get the current price breakdown for all supported tariffs."""
         now = dt_util.now()
         poland_tz = ZoneInfo("Europe/Warsaw")
         poland_now = now.astimezone(poland_tz)
@@ -370,7 +379,7 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
         }
 
 
-class TariffCostSensor(EnergyHubSensorEntity):
+class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
     """Sensor representing the accumulated cost for a specific tariff."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -404,7 +413,7 @@ class TariffCostSensor(EnergyHubSensorEntity):
         await super().async_added_to_hass()
 
         costs = self.coordinator.costs
-        if all(v == 0 for v in costs.values()):
+        if costs.get(self._tariff, 0.0) == 0.0:
             if (last_state := await self.async_get_last_state()) is not None:
                 try:
                     val = float(last_state.state)
@@ -479,7 +488,7 @@ class RecommendationSensor(EnergyConsumerEntity):
 
             prices = self._get_tariff_prices()
             filtered = {
-                tariff: float(prices[tariff])
+                tariff: prices[tariff]["total"]
                 for tariff in self._enabled_tariffs
                 if tariff in prices and prices[tariff] is not None
             }
@@ -617,7 +626,7 @@ class BestUsageHourSensor(EnergyHubSensorEntity):
         min_price = min(prices.values())
         total_price = self._calculate_total_price(min_price, "dynamic")
         return {
-            "price": self._convert_price(total_price),
+            "price": self._convert_price(total_price["total"] if total_price else None),
             "source": source,
         }
 
@@ -658,7 +667,7 @@ class SavingsPotentialSensor(EnergyHubSensorEntity):
 
         savings = current_price - min_price
         total_price = self._calculate_total_price(savings, "dynamic")
-        return self._convert_price(total_price)
+        return self._convert_price(total_price["total"] if total_price else None)
 
 
 class CurrentPriceSensor(EnergyHubSensorEntity):
@@ -712,7 +721,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             )
 
         total_price = self._calculate_total_price(val, self._tariff)
-        return self._convert_price(total_price)
+        return self._convert_price(total_price["total"] if total_price else None)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -745,11 +754,19 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             tomorrow_raw = self.coordinator.data.get("tomorrow", {})
 
             today_total: dict[Any, float | None] = {
-                h: self._calculate_total_price(p, "dynamic")
+                h: (
+                    self._calculate_total_price(p, "dynamic")["total"]
+                    if self._calculate_total_price(p, "dynamic")
+                    else None
+                )
                 for h, p in today_raw.items()
             }
             tomorrow_total: dict[Any, float | None] = {
-                h: self._calculate_total_price(p, "dynamic")
+                h: (
+                    self._calculate_total_price(p, "dynamic")["total"]
+                    if self._calculate_total_price(p, "dynamic")
+                    else None
+                )
                 for h, p in tomorrow_raw.items()
             }
 
@@ -765,7 +782,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
                     today_avg, "dynamic"
                 )
                 if total_avg is not None:
-                    attrs["today_average"] = self._convert_price(total_avg)
+                    attrs["today_average"] = self._convert_price(total_avg["total"])
 
         return attrs
 
@@ -800,7 +817,7 @@ class MinMaxPriceSensor(EnergyHubSensorEntity):
             return None
         val = min(prices.values()) if self._mode == "min" else max(prices.values())
         total_price = self._calculate_total_price(val, "dynamic")
-        return self._convert_price(total_price)
+        return self._convert_price(total_price["total"] if total_price else None)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -857,7 +874,7 @@ class AveragePriceSensor(EnergyHubSensorEntity):
             return None
 
         total_price = self._calculate_total_price(val, "dynamic")
-        return self._convert_price(total_price)
+        return self._convert_price(total_price["total"] if total_price else None)
 
 
 class LowestPriceHourSensor(EnergyHubSensorEntity):
@@ -903,7 +920,7 @@ class LowestPriceHourSensor(EnergyHubSensorEntity):
             return {}
         min_price = min(prices.values())
         total_price = self._calculate_total_price(min_price, "dynamic")
-        return {"price": self._convert_price(total_price)}
+        return {"price": self._convert_price(total_price["total"] if total_price else None)}
 
 
 class HighestPriceHourSensor(EnergyHubSensorEntity):
@@ -939,7 +956,7 @@ class HighestPriceHourSensor(EnergyHubSensorEntity):
             return {}
         price = self.coordinator.data.get(f"{self._day}_max_price")
         total_price = self._calculate_total_price(price, "dynamic")
-        return {"price": self._convert_price(total_price)}
+        return {"price": self._convert_price(total_price["total"] if total_price else None)}
 
 
 class KSELoadSensor(EnergyHubSensorEntity):

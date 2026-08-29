@@ -26,6 +26,9 @@ class _StubBinarySensorEntity:
 
 
 class _StubRestoreEntity:
+    async def async_added_to_hass(self):
+        return None
+
     async def async_get_last_state(self):
         return None
 

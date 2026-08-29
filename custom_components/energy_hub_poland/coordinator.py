@@ -404,6 +404,16 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         if now.day == 1 and self.last_reset.month != now.month:
             _LOGGER.info("Monthly cost reset triggered")
             self.costs = dict.fromkeys(self.costs, 0.0)
+
+            # Reset cost_breakdown for each known tariff to avoid accumulation
+            for tariff in list(self.cost_breakdown.keys()):
+                self.cost_breakdown[tariff] = {
+                    "energy": 0.0,
+                    "variable_fee": 0.0,
+                    "vat": 0.0,
+                    "total": 0.0,
+                }
+
             self.last_reset = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         try:
