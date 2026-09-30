@@ -11,7 +11,7 @@ Zanim zgłosisz błąd, sprawdź poniższe najczęstsze sytuacje.
 - **Strefy czasowe:** Integracja automatycznie przelicza czas UTC na czas polski. Sprawdź, czy Twój Home Assistant ma poprawnie ustawioną strefę czasową (`Europe/Warsaw`).
 
 ### 📊 Nowe sensory nie pokazują się lub są puste
-- **Sprawdź tryb pracy:** Sensory typu `price_status`, `best_usage_hour` i `savings_potential` są dostępne głównie w trybie dynamicznym.
+- **Sprawdź tryb pracy:** Sensor `price_status` jest dostępny w trybie dynamicznym oraz w taryfach strefowych G12 i G12w. Sensory typu `best_usage_hour` i `savings_potential` są dostępne w trybie dynamicznym.
 - **Poczekaj na dane:** Jeśli nie ma jeszcze pełnego zestawu danych dla dzisiaj lub jutra, niektóre sensory mogą zwracać brak danych.
 - **Sprawdź logi:** Jeśli sensor jest zarejestrowany, ale nie ma wartości, sprawdź logi Home Assistant pod kątem błędów związanych z aktualizacją coordinatora.
 

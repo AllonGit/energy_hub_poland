@@ -21,11 +21,6 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_ENABLED_TARIFFS,
     CONF_ENERGY_SENSOR,
-    CONF_G11_SETTINGS,
-    CONF_G12_SETTINGS,
-    CONF_G12N_SETTINGS,
-    CONF_G12W_SETTINGS,
-    CONF_G13_SETTINGS,
     CONF_NETWORK_VARIABLE_FEE,
     CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
     CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
@@ -50,6 +45,11 @@ from .const import (
     MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
+    STATUS_CHEAP,
+    STATUS_DYNAMIC_OPTIONS,
+    STATUS_EXPENSIVE,
+    STATUS_NORMAL,
+    STATUS_TARIFF_OPTIONS,
     UNIT_MWH,
 )
 from .coordinator import EnergyHubDataCoordinator
@@ -85,10 +85,13 @@ async def async_setup_entry(
         sensors.append(SavingsPotentialSensor(coordinator, entry))
     elif mode == MODE_G12:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12", config))
+        sensors.append(PriceStatusSensor(coordinator, entry, "g12"))
     elif mode == MODE_G12W:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12w", config))
+        sensors.append(PriceStatusSensor(coordinator, entry, "g12w"))
     elif mode == MODE_G12N:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12n", config))
+        sensors.append(PriceStatusSensor(coordinator, entry, "g12n"))
     elif mode == MODE_COMPARISON:
         sensors.extend(setup_comparison_sensors(coordinator, entry, config))
 
@@ -227,6 +230,37 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             return today_prices, "today"
         return {}, "none"
 
+    def _get_current_energy_price(self, tariff: str) -> tuple[float | None, str | None]:
+        """Get current base energy price (before fees and VAT) and zone for a tariff."""
+        now = dt_util.now()
+        poland_tz = ZoneInfo("Europe/Warsaw")
+        poland_now = now.astimezone(poland_tz)
+
+        settings = self._config.get(f"{tariff}_settings")
+        if not isinstance(settings, dict):
+            settings = self._config
+
+        if tariff == "dynamic":
+            if self.coordinator.data:
+                prices = self.coordinator.data.get("today", {})
+                return prices.get(poland_now.hour) if prices else None, None
+            return None, None
+        if tariff == "g11":
+            return get_current_g11_price(settings), None
+        if tariff == "g12":
+            res = get_current_g12_price(poland_now, settings)
+            return res.price, res.zone
+        if tariff == "g12w":
+            res = get_current_g12w_price(poland_now, settings)
+            return res.price, res.zone
+        if tariff == "g12n":
+            res = get_current_g12n_price(poland_now, settings)
+            return res.price, res.zone
+        if tariff == "g13":
+            res = get_current_g13_price(poland_now, settings)
+            return res.price, res.zone
+        return None, None
+
     def _calculate_total_price(
         self, energy_price: float | None, tariff: str
     ) -> dict[str, float] | None:
@@ -357,30 +391,12 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
 
     def _get_tariff_prices(self) -> dict[str, dict[str, float] | None]:
         """Get the current price breakdown for all supported tariffs."""
-        now = dt_util.now()
-        poland_tz = ZoneInfo("Europe/Warsaw")
-        poland_now = now.astimezone(poland_tz)
-
         if not self.coordinator.data:
             return {}
 
-        today_prices = self.coordinator.data.get("today", {})
-
         prices = {
-            "dynamic": today_prices.get(poland_now.hour),
-            "g11": get_current_g11_price(self._config.get(CONF_G11_SETTINGS, {})),
-            "g12": get_current_g12_price(
-                poland_now, self._config.get(CONF_G12_SETTINGS, {})
-            ),
-            "g12w": get_current_g12w_price(
-                poland_now, self._config.get(CONF_G12W_SETTINGS, {})
-            ),
-            "g12n": get_current_g12n_price(
-                poland_now, self._config.get(CONF_G12N_SETTINGS, {})
-            ),
-            "g13": get_current_g13_price(
-                poland_now, self._config.get(CONF_G13_SETTINGS, {})
-            ),
+            tariff: self._get_current_energy_price(tariff)[0]
+            for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
         }
 
         return {
@@ -538,29 +554,32 @@ class RecommendationSensor(EnergyConsumerEntity):
 
 
 class PriceStatusSensor(EnergyHubSensorEntity):
-    """Sensor that classifies the current dynamic price as cheap, normal or expensive."""
+    """Sensor that classifies the current dynamic or tariff price."""
 
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_state_class = None
     _attr_icon = "mdi:chart-line"
-    _attr_options = ["cheap", "normal", "expensive"]
 
-    def __init__(self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry):
+    def __init__(
+        self,
+        coordinator: EnergyHubDataCoordinator,
+        entry: ConfigEntry,
+        tariff: str | None = None,
+    ) -> None:
         """Initialize the price status sensor."""
         super().__init__(coordinator, entry)
+        self._tariff = tariff or self._config.get(CONF_OPERATION_MODE, MODE_DYNAMIC)
         self._attr_translation_key = "price_status"
         self._attr_unique_id = f"price_status_{entry.entry_id}"
+        if self._tariff == MODE_DYNAMIC:
+            self._attr_options = STATUS_DYNAMIC_OPTIONS
+        else:
+            self._attr_options = STATUS_TARIFF_OPTIONS
 
     def _get_current_price(self) -> float | None:
         """Return the current dynamic price from coordinator data."""
-        if not self.coordinator.data:
-            return None
-
-        now = dt_util.now()
-        poland_tz = ZoneInfo("Europe/Warsaw")
-        poland_now = now.astimezone(poland_tz)
-        today_prices = self.coordinator.data.get("today", {})
-        return today_prices.get(poland_now.hour) if today_prices else None
+        val, _ = self._get_current_energy_price(MODE_DYNAMIC)
+        return val
 
     def _get_average_price(self) -> float | None:
         """Return the average dynamic price for the current day."""
@@ -576,9 +595,8 @@ class PriceStatusSensor(EnergyHubSensorEntity):
             return today_avg
         return sum(today_prices.values()) / len(today_prices)
 
-    @property
-    def native_value(self) -> str | None:
-        """Return a simple cheap/normal/expensive classification."""
+    def _get_dynamic_price_status(self) -> str | None:
+        """Return cheap/normal/expensive classification for dynamic tariff."""
         current_price = self._get_current_price()
         average_price = self._get_average_price()
         if current_price is None or average_price is None:
@@ -592,21 +610,45 @@ class PriceStatusSensor(EnergyHubSensorEntity):
 
         if average_price == 0:
             return (
-                "cheap"
+                STATUS_CHEAP
                 if current_price <= 0
-                else "expensive"
+                else STATUS_EXPENSIVE
                 if current_price > 0
-                else "normal"
+                else STATUS_NORMAL
             )
 
         lower_bound = average_price * (1 - threshold_value / 100)
         upper_bound = average_price * (1 + threshold_value / 100)
 
         if current_price < lower_bound:
-            return "cheap"
+            return STATUS_CHEAP
         if current_price > upper_bound:
-            return "expensive"
-        return "normal"
+            return STATUS_EXPENSIVE
+        return STATUS_NORMAL
+
+    @property
+    def native_value(self) -> str | None:
+        """Return classification (cheap/normal/expensive for dynamic, peak/offpeak for G12*)."""
+        tariff = getattr(self, "_tariff", None) or self._config.get(
+            CONF_OPERATION_MODE, MODE_DYNAMIC
+        )
+        if tariff == MODE_DYNAMIC:
+            return self._get_dynamic_price_status()
+
+        _, zone = self._get_current_energy_price(tariff)
+        return zone
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Expose tariff information as extra state attributes."""
+        tariff = getattr(self, "_tariff", None) or self._config.get(
+            CONF_OPERATION_MODE, MODE_DYNAMIC
+        )
+        attrs: dict[str, Any] = {"tariff": tariff}
+        if tariff != MODE_DYNAMIC:
+            _, zone = self._get_current_energy_price(tariff)
+            attrs["zone"] = zone
+        return attrs
 
 
 class BestUsageHourSensor(EnergyHubSensorEntity):
@@ -713,34 +755,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
     @property
     def native_value(self) -> float | None:
         """Fetch and convert the current tariff price."""
-        now = dt_util.now()
-        poland_tz = ZoneInfo("Europe/Warsaw")
-        poland_now = now.astimezone(poland_tz)
-
-        val = None
-        if self._tariff == "dynamic":
-            if self.coordinator.data:
-                prices = self.coordinator.data.get("today", {})
-                val = prices.get(poland_now.hour) if prices else None
-        elif self._tariff == "g11":
-            val = get_current_g11_price(self._config.get(CONF_G11_SETTINGS, {}))
-        elif self._tariff == "g12":
-            val = get_current_g12_price(
-                poland_now, self._config.get(CONF_G12_SETTINGS, {})
-            )
-        elif self._tariff == "g12w":
-            val = get_current_g12w_price(
-                poland_now, self._config.get(CONF_G12W_SETTINGS, {})
-            )
-        elif self._tariff == "g12n":
-            val = get_current_g12n_price(
-                poland_now, self._config.get(CONF_G12N_SETTINGS, {})
-            )
-        elif self._tariff == "g13":
-            val = get_current_g13_price(
-                poland_now, self._config.get(CONF_G13_SETTINGS, {})
-            )
-
+        val, _ = self._get_current_energy_price(self._tariff)
         total_price = self._calculate_total_price(val, self._tariff)
         return self._convert_price(total_price["total"] if total_price else None)
 

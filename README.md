@@ -37,11 +37,13 @@ Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
 Klasyczna taryfa dwustrefowa zdefiniowana przez użytkownika.
 * Możliwość ręcznego wprowadzania godzin szczytowych (np. `6-13,15-22`).
 * Śledzenie kosztów w strefie drogiej i taniej.
+* Sensor statusu taryfy (`peak/offpeak` – strefa szczytowa / pozaszczytowa) do automatyzacji.
 
 ### 3. 🏖️ Tryb G12w (Weekendowy)
 Rozszerzona taryfa dwustrefowa, uwzględniająca polski kalendarz świąt.
 * Automatycznie traktuje **soboty, niedziele oraz polskie święta ustawowe** jako strefę pozaszczytową (tanią).
 * Wykorzystuje bibliotekę `holidays` do precyzyjnego wykrywania dni wolnych od pracy w Polsce.
+* Sensor statusu taryfy (`peak/offpeak` – strefa szczytowa / pozaszczytowa) do automatyzacji.
 
 ### 4. 📊 Tryb Porównania (Eksperymentalny)
 Najpotężniejsza funkcja integracji.

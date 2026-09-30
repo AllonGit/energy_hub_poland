@@ -9,11 +9,23 @@ from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.energy_hub_poland.const import (
+    CONF_OPERATION_MODE,
     CONF_PRICE_UNIT,
+    DOMAIN,
+    MODE_DYNAMIC,
+    MODE_G12,
+    MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
+    STATUS_CHEAP,
+    STATUS_DYNAMIC_OPTIONS,
+    STATUS_EXPENSIVE,
+    STATUS_NORMAL,
+    STATUS_TARIFF_OPTIONS,
     UNIT_KWH,
     UNIT_MWH,
+    ZONE_OFFPEAK,
+    ZONE_PEAK,
 )
 
 # Import sensor classes
@@ -27,6 +39,7 @@ from custom_components.energy_hub_poland.sensor import (
     PriceStatusSensor,
     SavingsPotentialSensor,
     TariffCostSensor,
+    async_setup_entry,
 )
 from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
@@ -71,6 +84,28 @@ class TestConvertPrice:
         assert entity._convert_price(None) is None
 
 
+class TestCurrentPriceSensor:
+    def test_g12w_current_price_native_value(self):
+        entry = _make_entry(
+            data={
+                CONF_PRICE_UNIT: UNIT_KWH,
+                CONF_OPERATION_MODE: MODE_G12W,
+                "g12w_settings": {
+                    "price_peak": 0.80,
+                    "price_offpeak": 0.50,
+                    "hours_peak_winter": "8-14",
+                },
+            }
+        )
+        coord = MagicMock()
+        coord.data = {}
+        sensor = CurrentPriceSensor(coord, entry, "g12w")
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            # Saturday Jan 18, 2025 at 10:00 (offpeak)
+            mock_dt.now.return_value = datetime(2025, 1, 18, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == 0.50
+
+
 class TestPriceStatusSensor:
     def _make_sensor(self, prices, threshold=30):
         entry = _make_entry(data={CONF_PRICE_UNIT: UNIT_KWH})
@@ -90,23 +125,164 @@ class TestPriceStatusSensor:
         sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.4})
         with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 15, 2, 0, 0, tzinfo=CET)
-            assert sensor.native_value == "expensive"
+            assert sensor.native_value == STATUS_EXPENSIVE
 
     def test_status_cheap_when_price_far_below_average(self):
         sensor = self._make_sensor({0: 0.05, 1: 0.05, 2: 0.40})
         with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 15, 0, 0, 0, tzinfo=CET)
-            assert sensor.native_value == "cheap"
+            assert sensor.native_value == STATUS_CHEAP
 
     def test_status_normal_when_within_threshold(self):
         sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.25})
         with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
             mock_dt.now.return_value = datetime(2025, 1, 15, 2, 0, 0, tzinfo=CET)
-            assert sensor.native_value == "normal"
+            assert sensor.native_value == STATUS_NORMAL
 
     def test_uses_enum_device_class_for_state_options(self):
-        sensor = self._make_sensor({0: 0.2, 1: 0.2, 2: 0.25})
-        assert sensor._attr_device_class == SensorDeviceClass.ENUM
+        coord = MagicMock()
+        coord.data = {}
+        entry_dyn = _make_entry(data={CONF_OPERATION_MODE: MODE_DYNAMIC})
+        sensor_dyn = PriceStatusSensor(coord, entry_dyn)
+        assert sensor_dyn._attr_device_class == SensorDeviceClass.ENUM
+        assert sensor_dyn.options == STATUS_DYNAMIC_OPTIONS
+
+        entry_g12 = _make_entry(data={CONF_OPERATION_MODE: MODE_G12})
+        sensor_g12 = PriceStatusSensor(coord, entry_g12, "g12")
+        assert sensor_g12._attr_device_class == SensorDeviceClass.ENUM
+        assert sensor_g12.options == STATUS_TARIFF_OPTIONS
+
+    def _make_tariff_sensor(self, tariff, settings, mode=None):
+        entry = _make_entry(
+            data={
+                CONF_PRICE_UNIT: UNIT_KWH,
+                CONF_OPERATION_MODE: mode or tariff,
+                f"{tariff}_settings": settings,
+            }
+        )
+        coord = MagicMock()
+        coord.data = {}
+
+        sensor = PriceStatusSensor.__new__(PriceStatusSensor)
+        sensor.coordinator = coord
+        sensor._config = {**entry.data, **entry.options}
+        sensor._price_unit = UNIT_KWH
+        sensor._tariff = tariff
+        sensor._attr_translation_key = "price_status"
+        sensor._attr_unique_id = f"price_status_{entry.entry_id}"
+        return sensor
+
+    def test_g12_status_peak_returns_peak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_PEAK
+
+    def test_g12_status_offpeak_returns_offpeak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 22, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_OFFPEAK
+
+    def test_g12w_status_weekend_returns_offpeak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12w", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            # Saturday Jan 18, 2025 at 10:00
+            mock_dt.now.return_value = datetime(2025, 1, 18, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_OFFPEAK
+
+    def test_g12w_status_holiday_returns_offpeak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12w", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            # Nov 11, 2025 (Polish Independence Day) at 10:00
+            mock_dt.now.return_value = datetime(2025, 11, 11, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_OFFPEAK
+
+    def test_g12w_status_weekday_peak_returns_peak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12w", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            # Wednesday Jan 15, 2025 at 10:00
+            mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_PEAK
+
+    def test_g12w_status_weekday_offpeak_returns_offpeak(self):
+        settings = {
+            "hours_peak_winter": "8-14",
+            "price_peak": 0.80,
+            "price_offpeak": 0.50,
+        }
+        sensor = self._make_tariff_sensor("g12w", settings)
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            # Wednesday Jan 15, 2025 at 22:00
+            mock_dt.now.return_value = datetime(2025, 1, 15, 22, 0, 0, tzinfo=CET)
+            assert sensor.native_value == ZONE_OFFPEAK
+
+    def test_extra_state_attributes(self):
+        sensor = self._make_tariff_sensor(
+            "g12",
+            {
+                "hours_peak_winter": "8-14",
+                "price_peak": 0.8,
+                "price_offpeak": 0.5,
+            },
+        )
+        with patch("custom_components.energy_hub_poland.sensor.dt_util") as mock_dt:
+            mock_dt.now.return_value = datetime(2025, 1, 15, 10, 0, 0, tzinfo=CET)
+            assert sensor.extra_state_attributes == {"tariff": "g12", "zone": ZONE_PEAK}
+
+    @pytest.mark.asyncio
+    async def test_async_setup_entry_registers_price_status_for_g12_and_g12w(self):
+        hass = MagicMock()
+        coord = MagicMock()
+        hass.data = {DOMAIN: {ENTRY_ID: coord}}
+
+        for mode, tariff in [(MODE_G12, "g12"), (MODE_G12W, "g12w")]:
+            entry = _make_entry(
+                data={
+                    CONF_OPERATION_MODE: mode,
+                    f"{tariff}_settings": {
+                        "price_peak": 0.8,
+                        "price_offpeak": 0.5,
+                        "hours_peak_winter": "8-14",
+                    },
+                }
+            )
+            added_entities = []
+
+            def mock_add_entities(entities, update_before_add=True):
+                added_entities.extend(entities)
+
+            await async_setup_entry(hass, entry, mock_add_entities)
+            status_sensors = [
+                e for e in added_entities if isinstance(e, PriceStatusSensor)
+            ]
+            assert len(status_sensors) == 1
+            assert status_sensors[0]._tariff == tariff
 
 
 class TestBestUsageHourSensor:

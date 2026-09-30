@@ -238,7 +238,9 @@
         "state": {
           "cheap": "Cheap",
           "normal": "Normal",
-          "expensive": "Expensive"
+          "expensive": "Expensive",
+          "peak": "Peak",
+          "offpeak": "Off-peak"
         }
       },
       "best_usage_hour": {

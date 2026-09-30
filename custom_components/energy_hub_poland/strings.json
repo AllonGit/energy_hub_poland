@@ -336,7 +336,14 @@
         "name": "Highest price hour tomorrow"
       },
       "price_status": {
-        "name": "Price status"
+        "name": "Price status",
+        "state": {
+          "cheap": "Cheap",
+          "normal": "Normal",
+          "expensive": "Expensive",
+          "peak": "Peak",
+          "offpeak": "Off-peak"
+        }
       },
       "best_usage_hour": {
         "name": "Best usage hour"

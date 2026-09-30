@@ -235,7 +235,9 @@
         "state": {
           "cheap": "Tania",
           "normal": "Normalna",
-          "expensive": "Droga"
+          "expensive": "Droga",
+          "peak": "Szczytowa",
+          "offpeak": "Pozaszczytowa"
         }
       },
       "best_usage_hour": {
