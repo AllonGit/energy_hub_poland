@@ -18,13 +18,13 @@ Aby widzieć koszty w panelu Energy:
 2. W sekcji "Zużycie energii elektrycznej" wybierz swój sensor zużycia.
 3. Wybierz opcję "Użyj encji z ceną energii" i wskaż sensor `sensor.energy_hub_sensor_ceny_aktualnej_twojej_teryfy`.
 
-## 4. Nowe sensory w trybie dynamicznym
-Po aktywacji trybu dynamicznego integracja udostępnia dodatkowe sensory, które pomagają w automatyzacjach:
-- `price_status` – klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`.
-- `best_usage_hour` – wskazuje najkorzystniejszą godzinę uruchomienia obciążenia.
-- `savings_potential` – pokazuje przewidywane oszczędności przy przesunięciu zużycia na najtańszą godzinę.
+## 4. Sensory statusu ceny i optymalizacji
+Integracja udostępnia praktyczne sensory, które ułatwiają automatyzacje:
+- `price_status` – w trybie dynamicznym (RCE) klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`; w taryfach strefowych G12 i G12w wskazuje aktywną strefę: `peak` (strefa szczytowa) lub `offpeak` (strefa pozaszczytowa).
+- `best_usage_hour` – wskazuje najkorzystniejszą godzinę uruchomienia obciążenia (tryb dynamiczny).
+- `savings_potential` – pokazuje przewidywane oszczędności przy przesunięciu zużycia na najtańszą godzinę (tryb dynamiczny).
 
-Przykład automatyzacji:
+Przykład automatyzacji (G12/G12w):
 ```yaml
 action:
   - service: switch.turn_on
@@ -33,7 +33,7 @@ action:
     condition:
       - condition: state
         entity_id: sensor.energy_hub_status_ceny
-        state: cheap
+        state: offpeak
 ```
 
 ## 5. Testy i rozwój lokalny
