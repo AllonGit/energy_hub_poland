@@ -398,6 +398,11 @@ class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
         self._attr_unique_id = f"cost_{tariff}_{entry.entry_id}"
 
     @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the currency: this is an accumulated cost, not a price."""
+        return "PLN"
+
+    @property
     def native_value(self) -> float | None:
         """Return the accumulated cost from the recommendation sensor."""
         costs = self.coordinator.data.get("costs", {})

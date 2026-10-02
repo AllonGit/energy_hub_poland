@@ -191,6 +191,26 @@ class TestTariffCostSensor:
         assert coord.costs["g11"] == 7.89
         coord.async_set_updated_data.assert_called_once_with(coord.data)
 
+    @pytest.mark.parametrize("unit_type", [UNIT_KWH, UNIT_MWH])
+    def test_unit_is_currency_not_price(self, unit_type):
+        sensor = TariffCostSensor.__new__(TariffCostSensor)
+        sensor._price_unit = unit_type
+        # The stubbed SensorEntity has no device_class property; mirror HA's.
+        sensor.device_class = sensor._attr_device_class
+
+        assert sensor.device_class == SensorDeviceClass.MONETARY
+        assert sensor.native_unit_of_measurement == "PLN"
+
+    @pytest.mark.parametrize(
+        ("unit_type", "expected"), [(UNIT_KWH, "PLN/kWh"), (UNIT_MWH, "PLN/MWh")]
+    )
+    def test_price_sensors_keep_price_unit(self, unit_type, expected):
+        sensor = CurrentPriceSensor.__new__(CurrentPriceSensor)
+        sensor._price_unit = unit_type
+        sensor.device_class = sensor._attr_device_class
+
+        assert sensor.native_unit_of_measurement == expected
+
 
 # ============================================================
 # AveragePriceSensor
