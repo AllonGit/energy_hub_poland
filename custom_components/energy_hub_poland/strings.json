@@ -125,6 +125,7 @@
         "title": "Change Energy Hub Settings",
         "description": "Update your tariff settings or change the energy consumption sensor.",
         "data": {
+          "enabled_tariffs": "Enabled tariffs for comparison",
           "vat_rate": "VAT Rate",
           "network_fixed_fee": "Fixed network fee (PLN/month)",
           "network_variable_fee": "Default variable network fee (PLN/kWh)",
@@ -157,6 +158,16 @@
     }
   },
   "selector": {
+    "enabled_tariffs": {
+      "options": {
+        "dynamic": "Dynamic Tariff (RCE)",
+        "g11": "Tariff G11",
+        "g12": "Tariff G12",
+        "g12w": "Tariff G12w",
+        "g12n": "Tariff G12n",
+        "g13": "Tariff G13"
+      }
+    },
     "operation_mode": {
       "options": {
         "dynamic": "Dynamic Tariff (RCE)",
