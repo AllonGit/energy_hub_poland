@@ -146,19 +146,17 @@ class TestDisabledTariffRecommendation:
 
         sensor = self._make_recommendation_sensor(config)
 
-
         recommendation = sensor.native_value
         print(f"Recommendation: {recommendation}")
         print(f"Enabled tariffs: {sensor._enabled_tariffs}")
         print(f"Costs: {sensor.coordinator.data['costs']}")
 
-
-        assert (
-            recommendation != "g13"
-        ), "BUG: G13 should not be recommended when disabled!"
-        assert (
-            recommendation == "g12w"
-        ), f"Expected recommendation 'g12w' but got '{recommendation}'"
+        assert recommendation != "g13", (
+            "BUG: G13 should not be recommended when disabled!"
+        )
+        assert recommendation == "g12w", (
+            f"Expected recommendation 'g12w' but got '{recommendation}'"
+        )
 
     def test_tariff_prices_return_cost_breakdown(self):
         """Test that tariff price values include split cost components and total."""
@@ -166,7 +164,10 @@ class TestDisabledTariffRecommendation:
         sensor.coordinator.data = {"today": {0: 0.35, 1: 0.32}}
 
         frozen_now = datetime(2024, 1, 1, 0, tzinfo=ZoneInfo("Europe/Warsaw"))
-        with patch("custom_components.energy_hub_poland.sensor.dt_util.now", return_value=frozen_now):
+        with patch(
+            "custom_components.energy_hub_poland.sensor.dt_util.now",
+            return_value=frozen_now,
+        ):
             prices = sensor._get_tariff_prices()
 
         assert "dynamic" in prices

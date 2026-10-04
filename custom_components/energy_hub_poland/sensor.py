@@ -215,7 +215,9 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
         tomorrow_prices = self.coordinator.data.get("tomorrow", {}) or {}
 
         future_today = {
-            hour: price for hour, price in today_prices.items() if hour >= poland_now.hour
+            hour: price
+            for hour, price in today_prices.items()
+            if hour >= poland_now.hour
         }
         if future_today:
             return future_today, "today"
@@ -240,7 +242,9 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             if energy_price == tariff_settings.get("price_peak"):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_PEAK)
             else:
-                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK)
+                variable_fee = tariff_settings.get(
+                    CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK
+                )
             if variable_fee is None:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         elif tariff == "g12w":
@@ -248,7 +252,9 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             if energy_price == tariff_settings.get("price_peak"):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12W_PEAK)
             else:
-                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK)
+                variable_fee = tariff_settings.get(
+                    CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK
+                )
             if variable_fee is None:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         elif tariff == "g12n":
@@ -256,7 +262,9 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             if energy_price == tariff_settings.get("price_peak"):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12N_PEAK)
             else:
-                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK)
+                variable_fee = tariff_settings.get(
+                    CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK
+                )
             if variable_fee is None:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         elif tariff == "g13":
@@ -266,7 +274,9 @@ class EnergyHubSensorEntity(EnergyHubBaseEntity, SensorEntity):
             elif energy_price == tariff_settings.get("price_peak_2"):
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G13_PEAK2)
             else:
-                variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK)
+                variable_fee = tariff_settings.get(
+                    CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK
+                )
             if variable_fee is None:
                 variable_fee = tariff_settings.get(CONF_NETWORK_VARIABLE_FEE)
         else:
@@ -576,7 +586,13 @@ class PriceStatusSensor(EnergyHubSensorEntity):
             threshold_value = 30.0
 
         if average_price == 0:
-            return "cheap" if current_price <= 0 else "expensive" if current_price > 0 else "normal"
+            return (
+                "cheap"
+                if current_price <= 0
+                else "expensive"
+                if current_price > 0
+                else "normal"
+            )
 
         lower_bound = average_price * (1 - threshold_value / 100)
         upper_bound = average_price * (1 + threshold_value / 100)
@@ -920,7 +936,9 @@ class LowestPriceHourSensor(EnergyHubSensorEntity):
             return {}
         min_price = min(prices.values())
         total_price = self._calculate_total_price(min_price, "dynamic")
-        return {"price": self._convert_price(total_price["total"] if total_price else None)}
+        return {
+            "price": self._convert_price(total_price["total"] if total_price else None)
+        }
 
 
 class HighestPriceHourSensor(EnergyHubSensorEntity):
@@ -956,7 +974,9 @@ class HighestPriceHourSensor(EnergyHubSensorEntity):
             return {}
         price = self.coordinator.data.get(f"{self._day}_max_price")
         total_price = self._calculate_total_price(price, "dynamic")
-        return {"price": self._convert_price(total_price["total"] if total_price else None)}
+        return {
+            "price": self._convert_price(total_price["total"] if total_price else None)
+        }
 
 
 class KSELoadSensor(EnergyHubSensorEntity):

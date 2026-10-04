@@ -127,7 +127,9 @@ class EnergyHubApiClient:
         """
         candidate_dates = [for_date]
         if for_date >= date.today() - timedelta(days=1):
-            candidate_dates.extend(for_date - timedelta(days=offset) for offset in range(1, 7))
+            candidate_dates.extend(
+                for_date - timedelta(days=offset) for offset in range(1, 7)
+            )
 
         for current_date in candidate_dates:
             date_str = current_date.strftime("%Y-%m-%d")
