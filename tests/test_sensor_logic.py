@@ -183,7 +183,7 @@ class TestTariffCostSensor:
         sensor._attr_translation_key = "cost_g11"
         sensor._attr_unique_id = "cost_g11_test"
         sensor.async_get_last_state = AsyncMock(
-            return_value=SimpleNamespace(state="7.89")
+            return_value=SimpleNamespace(state="7.89", attributes={})
         )
 
         await sensor.async_added_to_hass()
@@ -441,18 +441,31 @@ class TestTariffCostSensorRestore:
 
     async def test_restores_previous_cost_into_coordinator(self):
         sensor = self._make_sensor("g11")
-        sensor._mock_last_state = SimpleNamespace(state="12.34")
+        sensor._mock_last_state = SimpleNamespace(state="12.34", attributes={})
 
         await sensor.async_added_to_hass()
 
         assert sensor.coordinator.costs["g11"] == 12.34
         sensor.coordinator.async_set_updated_data.assert_called_once()
 
+    async def test_restores_last_reset_with_previous_cost(self):
+        """The restored value's period start comes back with it (#50)."""
+        sensor = self._make_sensor("g11")
+        sensor._mock_last_state = SimpleNamespace(
+            state="12.34", attributes={"last_reset": "2026-10-01T00:00:00+02:00"}
+        )
+
+        await sensor.async_added_to_hass()
+
+        expected = datetime(2026, 10, 1, tzinfo=timezone(timedelta(hours=2)))
+        assert sensor.coordinator.last_reset == expected
+        assert sensor.coordinator.data["last_reset"] == expected
+
     async def test_does_not_overwrite_already_accumulated_costs(self):
         costs = dict.fromkeys(ALL_TARIFFS, 0.0)
         costs["g11"] = 5.0
         sensor = self._make_sensor("g11", costs=costs)
-        sensor._mock_last_state = SimpleNamespace(state="12.34")
+        sensor._mock_last_state = SimpleNamespace(state="12.34", attributes={})
 
         await sensor.async_added_to_hass()
 
@@ -461,7 +474,7 @@ class TestTariffCostSensorRestore:
 
     async def test_ignores_unparsable_restored_state(self):
         sensor = self._make_sensor("g11")
-        sensor._mock_last_state = SimpleNamespace(state="unavailable")
+        sensor._mock_last_state = SimpleNamespace(state="unavailable", attributes={})
 
         await sensor.async_added_to_hass()
 

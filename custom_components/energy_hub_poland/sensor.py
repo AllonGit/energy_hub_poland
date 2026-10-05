@@ -439,6 +439,13 @@ class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
                             self._tariff,
                         )
                         self.coordinator.costs[self._tariff] = val
+                        # Keep the restored value's period start too, otherwise
+                        # last_reset would claim accumulation began just now.
+                        if restored_reset := dt_util.parse_datetime(
+                            str(last_state.attributes.get("last_reset") or "")
+                        ):
+                            self.coordinator.last_reset = restored_reset
+                            self.coordinator.data["last_reset"] = restored_reset
                         self.coordinator.async_set_updated_data(self.coordinator.data)
                 except (ValueError, TypeError):
                     pass
