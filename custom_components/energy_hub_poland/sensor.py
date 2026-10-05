@@ -389,6 +389,14 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
         }
 
 
+def _in_current_month(moment: datetime) -> bool:
+    """Return True if moment falls in the current billing month (Poland time)."""
+    poland_tz = ZoneInfo("Europe/Warsaw")
+    now = dt_util.now().astimezone(poland_tz)
+    moment = moment.astimezone(poland_tz)
+    return (moment.year, moment.month) == (now.year, now.month)
+
+
 class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
     """Sensor representing the accumulated cost for a specific tariff."""
 
@@ -432,13 +440,32 @@ class TariffCostSensor(EnergyHubSensorEntity, RestoreEntity):
             if (last_state := await self.async_get_last_state()) is not None:
                 try:
                     val = float(last_state.state)
-                    if val > 0:
+                    restored_reset = dt_util.parse_datetime(
+                        str(last_state.attributes.get("last_reset") or "")
+                    )
+                    if restored_reset is not None and not _in_current_month(
+                        restored_reset
+                    ):
+                        # Stale state from an earlier billing month (e.g. the
+                        # tariff was re-enabled): restoring it would carry old
+                        # costs over and make the next update reset every tariff.
+                        _LOGGER.debug(
+                            "Ignoring restored %s cost from period starting %s",
+                            self._tariff,
+                            restored_reset,
+                        )
+                    elif val > 0:
                         _LOGGER.info(
                             "Migrating restored value %s for %s to coordinator",
                             val,
                             self._tariff,
                         )
                         self.coordinator.costs[self._tariff] = val
+                        # Keep the restored value's period start too, otherwise
+                        # last_reset would claim accumulation began just now.
+                        if restored_reset is not None:
+                            self.coordinator.last_reset = restored_reset
+                            self.coordinator.data["last_reset"] = restored_reset
                         self.coordinator.async_set_updated_data(self.coordinator.data)
                 except (ValueError, TypeError):
                     pass
