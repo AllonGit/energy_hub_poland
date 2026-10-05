@@ -1,6 +1,6 @@
 """Tests for sensor logic (price sensors, cost sensors, energy delta)."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -8,6 +8,7 @@ import pytest
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from custom_components.energy_hub_poland import sensor as sensor_module
 from custom_components.energy_hub_poland.const import (
     CONF_PRICE_UNIT,
     SENSOR_TYPE_DAILY,
@@ -31,6 +32,9 @@ from custom_components.energy_hub_poland.sensor import (
 from tests.common import ENTRY_ID, SAMPLE_PRICES_TODAY
 
 CET = timezone(timedelta(hours=1))
+CEST = timezone(timedelta(hours=2))
+OCT_1_2026 = datetime(2026, 10, 1, tzinfo=CEST)
+OCT_15_2026 = datetime(2026, 10, 15, 12, 0, tzinfo=CEST)
 
 
 def _make_entry(**data_overrides):
@@ -455,11 +459,41 @@ class TestTariffCostSensorRestore:
             state="12.34", attributes={"last_reset": "2026-10-01T00:00:00+02:00"}
         )
 
-        await sensor.async_added_to_hass()
+        with patch.object(sensor_module.dt_util, "now", return_value=OCT_15_2026):
+            await sensor.async_added_to_hass()
 
         expected = datetime(2026, 10, 1, tzinfo=timezone(timedelta(hours=2)))
+        assert sensor.coordinator.costs["g11"] == 12.34
         assert sensor.coordinator.last_reset == expected
         assert sensor.coordinator.data["last_reset"] == expected
+
+    async def test_ignores_restored_state_from_previous_month(self):
+        """A stale state must not carry old costs or an old last_reset over."""
+        sensor = self._make_sensor("g11")
+        sensor.coordinator.last_reset = OCT_1_2026
+        sensor._mock_last_state = SimpleNamespace(
+            state="80.98", attributes={"last_reset": "2026-09-01T00:00:00+02:00"}
+        )
+
+        with patch.object(sensor_module.dt_util, "now", return_value=OCT_15_2026):
+            await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 0.0
+        assert sensor.coordinator.last_reset == OCT_1_2026
+        sensor.coordinator.async_set_updated_data.assert_not_called()
+
+    async def test_month_check_uses_poland_time(self):
+        """Sep 30 23:30 UTC is already October in Poland — same billing month."""
+        sensor = self._make_sensor("g11")
+        sensor._mock_last_state = SimpleNamespace(
+            state="1.5", attributes={"last_reset": "2026-10-01T00:00:00+02:00"}
+        )
+        now = datetime(2026, 9, 30, 23, 30, tzinfo=UTC)
+
+        with patch.object(sensor_module.dt_util, "now", return_value=now):
+            await sensor.async_added_to_hass()
+
+        assert sensor.coordinator.costs["g11"] == 1.5
 
     async def test_does_not_overwrite_already_accumulated_costs(self):
         costs = dict.fromkeys(ALL_TARIFFS, 0.0)
