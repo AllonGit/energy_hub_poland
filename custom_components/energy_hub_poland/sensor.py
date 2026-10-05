@@ -503,7 +503,7 @@ class RecommendationSensor(EnergyConsumerEntity):
 
             prices = self._get_tariff_prices()
             filtered = {
-                tariff: prices[tariff]["total"]
+                tariff: prices[tariff]["total"]  # type: ignore[index]  # mypy baseline, see #46
                 for tariff in self._enabled_tariffs
                 if tariff in prices and prices[tariff] is not None
             }
@@ -764,11 +764,11 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             variable_fee = self._config.get(CONF_NETWORK_VARIABLE_FEE, 0.0)
 
         attrs["network_variable_fee"] = float(variable_fee)
-        attrs["vat_rate"] = f"{self._config.get(CONF_VAT_RATE, '0')}%"
+        attrs["vat_rate"] = f"{self._config.get(CONF_VAT_RATE, '0')}%"  # type: ignore[assignment]  # mypy baseline, see #46
 
         if self._tariff == "dynamic":
             if not self.coordinator.data:
-                attrs.update({"today_prices": {}, "tomorrow_prices": {}})
+                attrs.update({"today_prices": {}, "tomorrow_prices": {}})  # type: ignore[dict-item]  # mypy baseline, see #46
                 return attrs
 
             today_raw = self.coordinator.data.get("today", {})
@@ -776,7 +776,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
 
             today_total: dict[Any, float | None] = {
                 h: (
-                    self._calculate_total_price(p, "dynamic")["total"]
+                    self._calculate_total_price(p, "dynamic")["total"]  # type: ignore[index]  # mypy baseline, see #46
                     if self._calculate_total_price(p, "dynamic")
                     else None
                 )
@@ -784,7 +784,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
             }
             tomorrow_total: dict[Any, float | None] = {
                 h: (
-                    self._calculate_total_price(p, "dynamic")["total"]
+                    self._calculate_total_price(p, "dynamic")["total"]  # type: ignore[index]  # mypy baseline, see #46
                     if self._calculate_total_price(p, "dynamic")
                     else None
                 )
@@ -793,17 +793,17 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
 
             attrs.update(
                 {
-                    "today_prices": today_total,
-                    "tomorrow_prices": tomorrow_total,
+                    "today_prices": today_total,  # type: ignore[dict-item]  # mypy baseline, see #46
+                    "tomorrow_prices": tomorrow_total,  # type: ignore[dict-item]  # mypy baseline, see #46
                 }
             )
             today_avg = self.coordinator.data.get("today_avg")
             if today_avg is not None:
-                total_avg: float | None = self._calculate_total_price(
+                total_avg: float | None = self._calculate_total_price(  # type: ignore[assignment]  # mypy baseline, see #46
                     today_avg, "dynamic"
                 )
                 if total_avg is not None:
-                    attrs["today_average"] = self._convert_price(total_avg["total"])
+                    attrs["today_average"] = self._convert_price(total_avg["total"])  # type: ignore[assignment, index]  # mypy baseline, see #46
 
         return attrs
 

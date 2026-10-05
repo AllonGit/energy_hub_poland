@@ -164,7 +164,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         backoff_interval: timedelta = timedelta(minutes=ERROR_BACKOFF_INTERVAL_MINUTES)
 
         if self._error_count >= ERROR_BACKOFF_THRESHOLD:
-            if self.update_interval != backoff_interval:
+            if self.update_interval != backoff_interval:  # type: ignore[has-type]  # mypy baseline, see #46
                 _LOGGER.warning(
                     "Multiple PSE failures detected, backing off updates to %s minutes",
                     ERROR_BACKOFF_INTERVAL_MINUTES,
