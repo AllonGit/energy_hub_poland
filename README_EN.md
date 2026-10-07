@@ -35,11 +35,13 @@ Fetches hourly market rates directly from PSE/TGE (Polish Power Exchange).
 Classic Time-of-Use (ToU) tariff defined by the user.
 * Allows manual entry of peak hours ranges (e.g., `6-13,15-22`).
 * Tracks costs separately for peak and off-peak zones.
+* Tariff status sensor (`peak/offpeak` zone) for automations.
 
 ### 3. 🏖️ G12w Mode (Weekend)
 Extended ToU tariff that accounts for the Polish holiday calendar.
 * Automatically treats **Saturdays, Sundays, and Polish statutory holidays** as off-peak zones.
 * Uses the `holidays` library for precise detection of non-working days in Poland.
+* Tariff status sensor (`peak/offpeak` zone) for automations.
 
 ### 4. 📊 Comparison Mode (Experimental)
 The integration's most powerful feature.

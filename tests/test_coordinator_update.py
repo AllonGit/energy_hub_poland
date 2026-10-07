@@ -425,3 +425,50 @@ class TestFetchData:
             result = await coord._fetch_data(TODAY)
 
         assert result is None
+
+
+# ============================================================
+# async_setup_entry hourly trigger
+# ============================================================
+
+
+class TestSetupEntryHourlyTrigger:
+    @pytest.mark.asyncio
+    async def test_setup_entry_registers_hourly_time_change(self):
+        """async_setup_entry registers an hourly callback to update coordinator listeners."""
+        import sys
+
+        from custom_components.energy_hub_poland import async_setup_entry
+
+        ha_event = sys.modules["homeassistant.helpers.event"]
+        ha_event.async_track_time_change.reset_mock()
+
+        hass = MagicMock()
+        hass.config_entries.async_forward_entry_setups = AsyncMock()
+        entry = MagicMock()
+        entry.entry_id = "test_entry"
+        entry.title = "Energy Hub"
+        entry.data = {}
+        entry.options = {}
+
+        with patch("custom_components.energy_hub_poland.EnergyHubDataCoordinator") as mock_coord_cls:
+            mock_coord = MagicMock()
+            mock_coord._load_cache = AsyncMock()
+            mock_coord.async_config_entry_first_refresh = AsyncMock()
+            mock_coord_cls.return_value = mock_coord
+
+            with patch("homeassistant.helpers.entity_registry.async_get"):
+                with patch("homeassistant.helpers.entity_registry.async_entries_for_config_entry", return_value=[]):
+                    result = await async_setup_entry(hass, entry)
+
+        assert result is True
+        assert ha_event.async_track_time_change.called
+        call_args = ha_event.async_track_time_change.call_args
+        assert call_args.kwargs.get("minute") == 0
+        assert call_args.kwargs.get("second") == 0
+
+        # Verify callback calls coordinator.async_update_listeners()
+        callback_fn = call_args.args[1]
+        callback_fn(None)
+        assert mock_coord.async_update_listeners.called
+

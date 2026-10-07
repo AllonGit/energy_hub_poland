@@ -696,6 +696,10 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     errors["base"] = "invalid_hour_range"
                     break
 
+            if mode == MODE_COMPARISON and CONF_ENABLED_TARIFFS in user_input:
+                if not user_input[CONF_ENABLED_TARIFFS]:
+                    errors["base"] = "no_tariff_selected"
+
             if not errors:
                 new_options = {}
                 tariff_prefixes = {
@@ -769,6 +773,22 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
             ] = vol.All(vol.Coerce(int), vol.Range(min=1, max=500))
 
         if mode == MODE_COMPARISON:
+            current_enabled = config.get(
+                CONF_ENABLED_TARIFFS,
+                ["dynamic", "g11", "g12", "g12w", "g13"],
+            )
+            schema[
+                vol.Required(
+                    CONF_ENABLED_TARIFFS,
+                    default=current_enabled,
+                )
+            ] = SelectSelector(
+                SelectSelectorConfig(
+                    options=["dynamic", "g11", "g12", "g12w", "g12n", "g13"],
+                    multiple=True,
+                    translation_key="enabled_tariffs",
+                )
+            )
             schema[
                 vol.Optional(CONF_ENERGY_SENSOR, default=config.get(CONF_ENERGY_SENSOR))
             ] = EntitySelector(EntitySelectorConfig(domain="sensor"))

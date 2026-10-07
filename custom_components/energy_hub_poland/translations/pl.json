@@ -117,6 +117,7 @@
         "title": "Zmień ustawienia Energy Hub",
         "description": "Zaktualizuj ustawienia taryfy lub zmień sensor zużycia energii.",
         "data": {
+          "enabled_tariffs": "Włączone taryfy do porównania",
           "vat_rate": "Stawka VAT",
           "network_fixed_fee": "Opłata stała sieciowa (PLN/miesiąc)",
           "network_variable_fee": "Domyślna opłata zmienna sieciowa (PLN/kWh)",
@@ -158,6 +159,16 @@
     }
   },
   "selector": {
+    "enabled_tariffs": {
+      "options": {
+        "dynamic": "Taryfa Dynamiczna (RCE)",
+        "g11": "Taryfa G11",
+        "g12": "Taryfa G12",
+        "g12w": "Taryfa G12w",
+        "g12n": "Taryfa G12n",
+        "g13": "Taryfa G13"
+      }
+    },
     "operation_mode": {
       "options": {
         "dynamic": "Taryfa Dynamiczna (RCE)",
@@ -235,7 +246,9 @@
         "state": {
           "cheap": "Tania",
           "normal": "Normalna",
-          "expensive": "Droga"
+          "expensive": "Droga",
+          "peak": "Szczytowa",
+          "offpeak": "Pozaszczytowa"
         }
       },
       "best_usage_hour": {
