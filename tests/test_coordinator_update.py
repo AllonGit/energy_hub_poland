@@ -305,6 +305,7 @@ class TestCache:
     async def test_load_cache_restores_data(self):
         """_load_cache correctly deserializes cached data."""
         cached_data = {
+            "price_cache_revision": 1,
             "today": {"0": 0.30, "1": 0.32},
             "today_date": "2025-01-15",
             "tomorrow": {"0": 0.28},
@@ -584,3 +585,37 @@ class TestTomorrowPricesPublication:
 
         assert result["tomorrow"] == {**PRICES_TOMORROW, 0: 0.0, 1: -0.1}
         coord.hass.bus.async_fire.assert_called_once()
+
+
+class TestLegacyPriceCache:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("revision", [None, 1])
+    @pytest.mark.parametrize("today_zero", [False, True])
+    async def test_cache_migration_preserves_costs_and_trusted_zero_prices(
+        self, revision, today_zero
+    ):
+        coord = _make_coordinator(cache_loaded=False)
+        prices = dict.fromkeys(range(24), 0.0)
+        cached = {
+            "today": prices if today_zero else PRICES_TODAY,
+            "today_date": TODAY.isoformat(),
+            "tomorrow": prices,
+            "tomorrow_date": TOMORROW.isoformat(),
+            "costs": {"dynamic": 651.37, "g12w": 500.13},
+            "cost_breakdown": {"g12w": {"total": 500.13}},
+            "last_reset": NOW.isoformat(),
+        }
+        if revision is not None:
+            cached["price_cache_revision"] = revision
+        coord.store.async_load.return_value = cached
+        with _patch_now(NOW), _patch_utcnow(NOW_UTC):
+            await coord._load_cache()
+        assert coord.costs["dynamic"] == 651.37
+        assert coord.costs["g12w"] == 500.13
+        assert coord.cost_breakdown["g12w"]["total"] == 500.13
+        assert coord._internal_data["tomorrow"] == (prices if revision else None)
+        assert coord._internal_data["today"] == (
+            None if today_zero and not revision else cached["today"]
+        )
+        await coord._save_cache()
+        assert coord.store.async_save.call_args.args[0]["price_cache_revision"] == 1

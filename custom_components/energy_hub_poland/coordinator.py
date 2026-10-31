@@ -572,6 +572,16 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     "kse_pow_dem": cached.get("kse_pow_dem"),
                     "imb_energy": cached.get("imb_energy"),
                 }
+                # Legacy cache may contain fabricated fallback prices. Revalidate
+                # tomorrow once; preserve today's real prices and all cost data.
+                if cached.get("price_cache_revision") != 1:
+                    self._internal_data["tomorrow"] = None
+                    self._internal_data["tomorrow_date"] = None
+                    self._internal_data["last_price_update"] = None
+                    today_prices = self._internal_data["today"]
+                    if today_prices and all(v == 0 for v in today_prices.values()):
+                        self._internal_data["today"] = None
+                        self._internal_data["today_date"] = None
                 if last_update := cached.get("last_update_time"):
                     self.last_update_time = dt_util.parse_datetime(last_update)
                 self.api_connected = cached.get("api_connected", True)
@@ -630,6 +640,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             today_date: date | None = self._internal_data["today_date"]
             tomorrow_date: date | None = self._internal_data["tomorrow_date"]
             data_to_save = {
+                "price_cache_revision": 1,
                 "today": self._internal_data["today"],
                 "today_date": today_date.isoformat() if today_date else None,
                 "tomorrow": self._internal_data["tomorrow"],
