@@ -96,3 +96,46 @@ class TestAsyncGetPrices:
 
         headers = mock_session.get.call_args[1].get("headers", {})
         assert "User-Agent" in headers
+
+
+class TestMissingPrices:
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("payload", [[], {"data": []}, {"value": []}])
+    async def test_missing_recent_prices_do_not_use_another_date(
+        self, api_client, mock_session, payload
+    ):
+        response = AsyncMock()
+        response.raise_for_status = MagicMock()
+        response.json = AsyncMock(return_value=payload)
+        mock_session.get = AsyncMock(return_value=response)
+
+        assert await api_client.async_get_prices(date.today()) is None
+        mock_session.get.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_recent_api_failure_does_not_generate_prices(
+        self, api_client, mock_session
+    ):
+        mock_session.get = AsyncMock(side_effect=TimeoutError())
+
+        assert await api_client.async_get_prices(date.today()) is None
+        mock_session.get.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("price", ["0", "-100"])
+    @pytest.mark.parametrize("wrapper", [None, "data", "value"])
+    async def test_real_zero_and_negative_prices_are_returned(
+        self, api_client, mock_session, price, wrapper
+    ):
+        data = [
+            {
+                "date_time": "2025-01-15 00:00:00",
+                "attributes": [{"name": "price", "value": price}],
+            }
+        ]
+        response = AsyncMock()
+        response.raise_for_status = MagicMock()
+        response.json = AsyncMock(return_value={wrapper: data} if wrapper else data)
+        mock_session.get = AsyncMock(return_value=response)
+
+        assert await api_client.async_get_prices(date.today()) == data

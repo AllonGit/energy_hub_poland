@@ -452,7 +452,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         ):
             needs_price_update = True
         elif poland_now.hour >= 12 and (
-            not self._internal_data.get("tomorrow")
+            len(self._internal_data.get("tomorrow") or {}) < 24
             or self._internal_data.get("tomorrow_date")
             != (today_date + timedelta(days=1))
         ):
@@ -724,7 +724,9 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                             price_val = attr.get("value")
                             break
                 elif isinstance(attributes, dict):
-                    price_val = attributes.get("price") or attributes.get("value")
+                    price_val = attributes.get("price")
+                    if price_val is None:
+                        price_val = attributes.get("value")
 
                 if price_val is None:
                     for key in ("price", "value", "cena", "price_mwh"):
@@ -733,16 +735,18 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                             break
 
                 if price_val is None:
-                    price_val = 0.0
+                    continue
 
                 try:
                     price_val = float(price_val)
                 except (TypeError, ValueError):
-                    price_val = 0.0
+                    continue
 
-                normalized_price = price_val / 1000 if price_val > 10 else price_val
+                normalized_price = (
+                    price_val / 1000 if abs(price_val) > 10 else price_val
+                )
 
-                if not (0 <= normalized_price <= 10000):
+                if not (-10000 <= normalized_price <= 10000):
                     _LOGGER.warning(
                         "Invalid price value: %s for hour %d. Skipping record.",
                         normalized_price,

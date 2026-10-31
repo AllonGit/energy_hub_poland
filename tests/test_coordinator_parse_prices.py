@@ -4,6 +4,8 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from custom_components.energy_hub_poland import coordinator as coord_module
 from custom_components.energy_hub_poland.coordinator import EnergyHubDataCoordinator
 from tests.common import ENTRY_ID, make_raw_api_data
@@ -62,7 +64,7 @@ class TestParsePrice:
         assert result is not None
         assert len(result) == 12
 
-    def test_missing_price_attribute_defaults_to_zero(self):
+    def test_missing_price_attribute_is_skipped(self):
         coord = _make_coordinator()
         raw_data = [
             {
@@ -72,8 +74,7 @@ class TestParsePrice:
         ]
         with patch.object(coord_module.dt_util, "DEFAULT_TIME_ZONE", WARSAW):
             result = coord._parse_prices(raw_data)
-        assert result is not None
-        assert result[10] == 0.0
+        assert result is None
 
     def test_invalid_date_format_returns_none(self):
         coord = _make_coordinator()
@@ -109,3 +110,24 @@ class TestParsePrice:
         assert result is not None
         # 123.456 / 1000 = 0.123456 → round(4) = 0.1235
         assert result[0] == 0.1235
+
+    @pytest.mark.parametrize("value", [None, "invalid", "NaN", "inf", "-inf"])
+    def test_invalid_price_is_skipped(self, value):
+        coord = _make_coordinator()
+        raw_data = [
+            {
+                "date_time": "2025-01-15 10:00:00",
+                "attributes": [{"name": "price", "value": value}],
+            }
+        ]
+        assert coord._parse_prices(raw_data) is None
+
+    @pytest.mark.parametrize("value, expected", [(0, 0.0), (-100, -0.1)])
+    @pytest.mark.parametrize("as_dict", [False, True])
+    def test_zero_and_negative_prices(self, value, expected, as_dict):
+        coord = _make_coordinator()
+        attributes = (
+            {"price": value} if as_dict else [{"name": "price", "value": value}]
+        )
+        raw_data = [{"date_time": "2025-01-15 10:00:00", "attributes": attributes}]
+        assert coord._parse_prices(raw_data) == {10: expected}
