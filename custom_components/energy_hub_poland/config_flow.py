@@ -22,6 +22,7 @@ from .const import (
     CONF_G11_SETTINGS,
     CONF_G12_SETTINGS,
     CONF_G12N_SETTINGS,
+    CONF_G12R_SETTINGS,
     CONF_G12W_SETTINGS,
     CONF_G13_SETTINGS,
     CONF_HOURS_PEAK,
@@ -58,6 +59,7 @@ from .const import (
     MODE_G11,
     MODE_G12,
     MODE_G12N,
+    MODE_G12R,
     MODE_G12W,
     MODE_G13,
     PROVIDER_CUSTOM,
@@ -172,6 +174,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                                 MODE_DYNAMIC,
                                 MODE_G12,
                                 MODE_G12W,
+                                MODE_G12R,
                                 MODE_G12N,
                                 MODE_COMPARISON,
                             ],
@@ -197,6 +200,8 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                 return await self.async_step_g12_config()
             if mode == MODE_G12W:
                 return await self.async_step_g12w_config()
+            if mode == MODE_G12R:
+                return await self.async_step_g12r_config()
             if mode == MODE_G12N:
                 return await self.async_step_g12n_config()
             if mode == MODE_COMPARISON:
@@ -248,7 +253,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
 
     def _get_selected_tariffs(self) -> list[str]:
         enabled_tariffs = self.config_data.get(CONF_ENABLED_TARIFFS, [])
-        order = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        order = ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"]
         return [tariff for tariff in order if tariff in enabled_tariffs]
 
     def _get_next_selected_tariff(self, current: str | None = None) -> str | None:
@@ -292,6 +297,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
                             vol.Required("g11", default=True): bool,
                             vol.Required("g12", default=True): bool,
                             vol.Required("g12w", default=True): bool,
+                            vol.Required("g12r", default=True): bool,
                             vol.Required("g12n", default=False): bool,
                             vol.Required("g13", default=True): bool,
                         }
@@ -303,7 +309,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             return await self._async_step_next_selected_tariff()
 
         provider = self.config_data.get(CONF_PROVIDER, PROVIDER_CUSTOM)
-        default_enabled = ["dynamic", "g11", "g12", "g12w", "g13"]
+        default_enabled = ["dynamic", "g11", "g12", "g12w", "g12r", "g13"]
         if provider == PROVIDER_PGE:
             default_enabled.append("g12n")
 
@@ -312,6 +318,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             vol.Required("g11", default="g11" in default_enabled): bool,
             vol.Required("g12", default="g12" in default_enabled): bool,
             vol.Required("g12w", default="g12w" in default_enabled): bool,
+            vol.Required("g12r", default="g12r" in default_enabled): bool,
             vol.Required("g12n", default="g12n" in default_enabled): bool,
             vol.Required("g13", default="g13" in default_enabled): bool,
         }
@@ -540,6 +547,35 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             ),
         )
 
+    async def async_step_g12r_config(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle G12r tariff configuration (fixed off-peak windows)."""
+        if user_input is not None:
+            self.config_data[CONF_G12R_SETTINGS] = user_input
+            if self.config_data[CONF_OPERATION_MODE] == MODE_COMPARISON:
+                return await self._async_step_next_selected_tariff("g12r")
+            return await self.async_finish_config()
+
+        s = self.config_data.get(CONF_G12R_SETTINGS, {})
+        return self.async_show_form(
+            step_id="g12r_config",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_PRICE_PEAK, default=s.get(CONF_PRICE_PEAK, 0.80)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Required(
+                        CONF_PRICE_OFFPEAK, default=s.get(CONF_PRICE_OFFPEAK, 0.50)
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0.01)),
+                    vol.Optional(
+                        CONF_NETWORK_VARIABLE_FEE,
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    ): vol.All(vol.Coerce(float), vol.Range(min=0)),
+                }
+            ),
+        )
+
     async def async_step_g13_config(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
@@ -654,6 +690,7 @@ class EnergyHubPolandConfigFlow(config_entries.ConfigFlow, domain="energy_hub_po
             MODE_DYNAMIC: "Energy Hub Dynamic",
             MODE_G12: "Energy Hub G12",
             MODE_G12W: "Energy Hub G12w",
+            MODE_G12R: "Energy Hub G12r",
             MODE_G12N: "Energy Hub G12n",
             MODE_COMPARISON: "Energy Hub Comparison",
         }
@@ -702,6 +739,7 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     "g11_settings": CONF_G11_SETTINGS,
                     "g12_settings": CONF_G12_SETTINGS,
                     "g12w_settings": CONF_G12W_SETTINGS,
+                    "g12r_settings": CONF_G12R_SETTINGS,
                     "g12n_settings": CONF_G12N_SETTINGS,
                     "g13_settings": CONF_G13_SETTINGS,
                 }
@@ -805,7 +843,14 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
 
         tariffs_to_show = []
         if mode == MODE_COMPARISON:
-            tariffs_to_show = [MODE_G11, MODE_G12, MODE_G12W, MODE_G12N, MODE_G13]
+            tariffs_to_show = [
+                MODE_G11,
+                MODE_G12,
+                MODE_G12W,
+                MODE_G12R,
+                MODE_G12N,
+                MODE_G13,
+            ]
         else:
             tariffs_to_show = [mode]  # type: ignore
 
@@ -885,6 +930,26 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_HOURS_PEAK_WINTER, DEFAULT_G12_PEAK_HOURS),
                     )
                 ] = str
+            elif t == MODE_G12R:
+                s = config.get(CONF_G12R_SETTINGS, {})
+                schema[
+                    vol.Required(
+                        "g12r_settings_price_peak",
+                        default=s.get(CONF_PRICE_PEAK, 0.80),
+                    )
+                ] = vol.Coerce(float)
+                schema[
+                    vol.Required(
+                        "g12r_settings_price_offpeak",
+                        default=s.get(CONF_PRICE_OFFPEAK, 0.50),
+                    )
+                ] = vol.Coerce(float)
+                schema[
+                    vol.Optional(
+                        "g12r_settings_network_variable_fee",
+                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                    )
+                ] = vol.Coerce(float)
             elif t == MODE_G12N:
                 s = config.get(CONF_G12N_SETTINGS, {})
                 schema[

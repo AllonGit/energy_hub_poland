@@ -9,7 +9,7 @@ Po pomyślnej instalacji przez HACS, wykonaj poniższe kroki, aby w pełni wykor
 
 ## 2. Wybór trybu pracy
 - **Taryfa Dynamiczna (RCE):** Pobiera ceny rynkowe energii publikowane przez PSE. Idealne, jeśli rozliczasz się dynamicznie.
-- **Wirtualne G12/G12w:** Pozwala na wpisanie stałych stawek Twojego sprzedawcy.
+- **Wirtualne G12/G12w/G12r:** Pozwala na wpisanie stałych stawek Twojego sprzedawcy; G12r ma tanią strefę codziennie od 22:00 do 7:00 oraz od 13:00 do 16:00.
 - **Tryb Porównawczy:** Wyświetla dane z taryfy dynamicznej oraz Twoich stawek stałych, pokazując potencjalne oszczędności.
 
 ## 3. Integracja z Panelem Energia

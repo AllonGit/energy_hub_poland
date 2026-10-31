@@ -11,6 +11,7 @@ from custom_components.energy_hub_poland.const import (
     CONF_G11_SETTINGS,
     CONF_G12_SETTINGS,
     CONF_G12N_SETTINGS,
+    CONF_G12R_SETTINGS,
     CONF_G12W_SETTINGS,
     CONF_G13_SETTINGS,
     CONF_NETWORK_VARIABLE_FEE,
@@ -53,6 +54,10 @@ class TestDisabledTariffRecommendation:
                     "price_peak": 0.45,
                     "price_offpeak": 0.28,
                     "hours_peak": "6-13,15-22",
+                },
+                CONF_G12R_SETTINGS: {
+                    "price_peak": 0.58,
+                    "price_offpeak": 0.31,
                 },
                 CONF_G12N_SETTINGS: {
                     "price_peak": 0.48,
@@ -98,7 +103,8 @@ class TestDisabledTariffRecommendation:
 
         # This is the key fix: set enabled_tariffs
         sensor._enabled_tariffs = config_data.get(
-            CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+            CONF_ENABLED_TARIFFS,
+            ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"],
         )
 
         return sensor
@@ -174,6 +180,7 @@ class TestDisabledTariffRecommendation:
         assert isinstance(prices["dynamic"], dict)
         assert set(prices["dynamic"]) == {"energy", "variable_fee", "vat", "total"}
         assert prices["dynamic"]["total"] > prices["dynamic"]["energy"]
+        assert prices["g12r"]["energy"] == 0.31
 
     def test_attributes_exclude_disabled_tariffs(self):
         """Test that extra_state_attributes only includes enabled tariffs."""

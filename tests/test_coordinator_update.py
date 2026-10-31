@@ -44,7 +44,9 @@ def _make_coordinator(
     }
     coord.last_update_time = None
     coord.api_connected = True
-    coord.costs = dict.fromkeys(["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0)
+    coord.costs = dict.fromkeys(
+        ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"], 0.0
+    )
     coord.last_reset = datetime(2025, 1, 1, tzinfo=UTC)
     coord._error_count = 0
     coord.update_interval = timedelta(minutes=5)

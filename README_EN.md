@@ -23,7 +23,7 @@ A unique feature is the **Comparison Mode**, which analyzes your consumption pat
 
 ## 🌟 Features and Operation Modes
 
-The integration supports four main operational modes:
+The integration supports five main operational modes:
 
 ### 1. 📉 Dynamic Mode (RCE)
 Fetches hourly market rates directly from PSE/TGE (Polish Power Exchange).
@@ -41,9 +41,14 @@ Extended ToU tariff that accounts for the Polish holiday calendar.
 * Automatically treats **Saturdays, Sundays, and Polish statutory holidays** as off-peak zones.
 * Uses the `holidays` library for precise detection of non-working days in Poland.
 
-### 4. 📊 Comparison Mode (Experimental)
+### 4. 🌙 G12r Mode
+Two-zone tariff with off-peak hours every day from **22:00–7:00** and **13:00–16:00**.
+* Uses the same schedule throughout the week, including weekends and holidays.
+* Allows configuration of peak and off-peak rates and the variable network fee.
+
+### 5. 📊 Comparison Mode (Experimental)
 The integration's most powerful feature.
-* Calculates energy costs for **all three tariff types simultaneously** in real-time.
+* Calculates energy costs for **all supported tariffs simultaneously** in real-time.
 * Indicates potential savings if you were to switch tariffs.
 * Requires a connected energy meter sensor (kWh, `total_increasing` type).
 

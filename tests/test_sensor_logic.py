@@ -9,6 +9,7 @@ from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from custom_components.energy_hub_poland.const import (
+    CONF_G12R_SETTINGS,
     CONF_PRICE_UNIT,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
@@ -69,6 +70,24 @@ class TestConvertPrice:
     def test_none_returns_none(self):
         entity = self._make_entity(UNIT_KWH)
         assert entity._convert_price(None) is None
+
+
+class TestCurrentG12rPriceSensor:
+    def test_native_value_uses_g12r_offpeak_hours(self):
+        sensor = CurrentPriceSensor.__new__(CurrentPriceSensor)
+        sensor.coordinator = MagicMock()
+        sensor._config = {
+            CONF_G12R_SETTINGS: {"price_peak": 0.80, "price_offpeak": 0.50},
+            "vat_rate": "0",
+        }
+        sensor._price_unit = UNIT_KWH
+        sensor._tariff = "g12r"
+
+        with patch(
+            "custom_components.energy_hub_poland.sensor.dt_util.now",
+            return_value=datetime(2025, 1, 15, 14, 0, tzinfo=CET),
+        ):
+            assert sensor.native_value == 0.5
 
 
 class TestPriceStatusSensor:
@@ -410,7 +429,7 @@ class TestGetEnergyDelta:
 # TariffCostSensor.async_added_to_hass — state restoration
 # ============================================================
 
-ALL_TARIFFS = ("dynamic", "g11", "g12", "g12w", "g12n", "g13")
+ALL_TARIFFS = ("dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13")
 
 
 class TestTariffCostSensorRestore:

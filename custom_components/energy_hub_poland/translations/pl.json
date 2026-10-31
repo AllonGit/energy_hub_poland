@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Wybierz tryb pracy - Energy Hub",
-        "description": "Wybierz sposób działania integracji:\n- **Taryfa Dynamiczna (RCE):** Monitorowanie cen rynkowych.\n- **Wirtualna Taryfa G12/G12w:** Symulacja kosztów dla taryf stałych.\n- **Tryb Porównawczy:** Porównanie wszystkich taryf (G11, G12, G12w, G12n, G13).",
+        "description": "Wybierz sposób działania integracji:\n- **Taryfa Dynamiczna (RCE):** Monitorowanie cen rynkowych.\n- **Wirtualna Taryfa G12/G12w/G12r:** Symulacja kosztów dla taryf stałych.\n- **Tryb Porównawczy:** Porównanie wszystkich taryf (G11, G12, G12w, G12r, G12n, G13).",
         "data": {
           "operation_mode": "Tryb pracy"
         }
@@ -48,6 +48,15 @@
           "hours_peak_winter": "Godziny szczytu - ZIMA (np. 6-13,15-22)"
         }
       },
+      "g12r_config": {
+        "title": "Konfiguracja taryfy G12r",
+        "description": "Wprowadź stawki netto G12r. Tania strefa obowiązuje codziennie w godzinach 22:00-7:00 oraz 13:00-16:00.",
+        "data": {
+          "price_peak": "Cena w szczycie (PLN/kWh)",
+          "price_offpeak": "Cena poza szczytem (PLN/kWh)",
+          "network_variable_fee": "Opłata zmienna sieciowa (PLN/kWh)"
+        }
+      },
       "g12n_config": {
         "title": "Konfiguracja taryfy G12n (PGE)",
         "description": "Wprowadź stawki dla G12n. Okna nocne oraz niedziele/święta są skonfigurowane automatycznie.",
@@ -79,6 +88,7 @@
           "g11": "Taryfa G11",
           "g12": "Taryfa G12",
           "g12w": "Taryfa G12w",
+          "g12r": "Taryfa G12r",
           "g12n": "Taryfa G12n",
           "g13": "Taryfa G13"
         }
@@ -141,6 +151,9 @@
           "g12w_settings_network_variable_fee": "G12w - Opłata zmienna sieciowa",
           "g12w_settings_hours_peak_summer": "G12w - Godziny szczytu LATO",
           "g12w_settings_hours_peak_winter": "G12w - Godziny szczytu ZIMA",
+          "g12r_settings_price_peak": "G12r - Cena szczyt",
+          "g12r_settings_price_offpeak": "G12r - Cena poza szczytem",
+          "g12r_settings_network_variable_fee": "G12r - Opłata zmienna sieciowa",
           "g12n_settings_price_peak": "G12n - Cena dzień",
           "g12n_settings_price_offpeak": "G12n - Cena noc",
           "g12n_settings_network_variable_fee_peak": "G12n - Opłata sieciowa szczytowa",
@@ -163,6 +176,7 @@
         "dynamic": "Taryfa Dynamiczna (RCE)",
         "g12": "Wirtualna Taryfa G12",
         "g12w": "Wirtualna Taryfa G12w",
+        "g12r": "Wirtualna Taryfa G12r",
         "comparison": "Tryb Porównawczy (wszystkie taryfy)"
       }
     },
@@ -205,6 +219,7 @@
           "g11": "Taryfa G11",
           "g12": "Taryfa G12",
           "g12w": "Taryfa G12w",
+          "g12r": "Taryfa G12r",
           "g12n": "Taryfa G12n",
           "g13": "Taryfa G13",
           "brak_danych": "Brak danych"
@@ -221,6 +236,9 @@
           },
           "savings_g12w_vs_dynamic": {
             "name": "Oszczędność G12w vs Dynamiczna"
+          },
+          "savings_g12r_vs_dynamic": {
+            "name": "Oszczędność G12r vs Dynamiczna"
           },
           "savings_g12n_vs_dynamic": {
             "name": "Oszczędność G12n vs Dynamiczna"
@@ -288,6 +306,17 @@
       },
       "current_price_g12w": {
         "name": "Aktualna cena G12w",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Zmienna opłata sieciowa"
+          },
+          "vat_rate": {
+            "name": "Stawka VAT"
+          }
+        }
+      },
+      "current_price_g12r": {
+        "name": "Aktualna cena G12r",
         "state_attributes": {
           "network_variable_fee": {
             "name": "Zmienna opłata sieciowa"
@@ -366,6 +395,9 @@
       },
       "cost_g12w": {
         "name": "Koszt - G12w"
+      },
+      "cost_g12r": {
+        "name": "Koszt - G12r"
       },
       "cost_g12n": {
         "name": "Koszt - G12n"

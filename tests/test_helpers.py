@@ -12,6 +12,7 @@ from custom_components.energy_hub_poland.helpers import (
 )
 from custom_components.energy_hub_poland.tariffs import (
     get_current_g12_price,
+    get_current_g12r_price,
     get_current_g12w_price,
 )
 
@@ -148,6 +149,39 @@ class TestGetCurrentG12wPrice:
             "price_offpeak": 0.50,
         }
         assert get_current_g12w_price(dt, settings) == 0.50
+
+
+# ============================================================
+# get_current_g12r_price
+# ============================================================
+
+
+class TestGetCurrentG12rPrice:
+    def test_fixed_offpeak_windows_and_boundaries(self):
+        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
+        expected_prices = {
+            6: 0.50,
+            7: 0.80,
+            12: 0.80,
+            13: 0.50,
+            15: 0.50,
+            16: 0.80,
+            21: 0.80,
+            22: 0.50,
+            23: 0.50,
+        }
+
+        for hour, expected in expected_prices.items():
+            dt = datetime(2025, 1, 15, hour, 0, 0, tzinfo=WARSAW)
+            assert get_current_g12r_price(dt, settings) == expected
+
+    def test_schedule_applies_on_weekends_and_holidays(self):
+        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
+        saturday = datetime(2025, 1, 18, 10, 0, 0, tzinfo=WARSAW)
+        holiday = datetime(2025, 11, 11, 10, 0, 0, tzinfo=WARSAW)
+
+        assert get_current_g12r_price(saturday, settings) == 0.80
+        assert get_current_g12r_price(holiday, settings) == 0.80
 
     def test_sunday_returns_offpeak(self):
         dt = datetime(2025, 1, 19, 10, 0, 0, tzinfo=WARSAW)

@@ -23,7 +23,7 @@ Unikalną cechą jest **Tryb Porównania**, który analizuje Twoje zużycie i po
 
 ## 🌟 Możliwości i Tryby Pracy
 
-Integracja obsługuje cztery główne tryby operacyjne:
+Integracja obsługuje pięć głównych trybów operacyjnych:
 
 ### 1. 📉 Tryb Dynamiczny (RCE)
 Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
@@ -43,9 +43,14 @@ Rozszerzona taryfa dwustrefowa, uwzględniająca polski kalendarz świąt.
 * Automatycznie traktuje **soboty, niedziele oraz polskie święta ustawowe** jako strefę pozaszczytową (tanią).
 * Wykorzystuje bibliotekę `holidays` do precyzyjnego wykrywania dni wolnych od pracy w Polsce.
 
-### 4. 📊 Tryb Porównania (Eksperymentalny)
+### 4. 🌙 Tryb G12r
+Taryfa dwustrefowa z tanią strefą codziennie w godzinach **22:00–7:00** i **13:00–16:00**.
+* Używa tego samego harmonogramu przez cały tydzień, również w weekendy i święta.
+* Pozwala skonfigurować stawki szczytową i pozaszczytową oraz zmienną opłatę sieciową.
+
+### 5. 📊 Tryb Porównania (Eksperymentalny)
 Najpotężniejsza funkcja integracji.
-* Oblicza koszty zużycia energii dla **wszystkich trzech taryf jednocześnie** w czasie rzeczywistym.
+* Oblicza koszty zużycia energii dla **wszystkich obsługiwanych taryf jednocześnie** w czasie rzeczywistym.
 * Uwzględnia zdefiniowane opłaty sieciowe, pozwalając na realne porównanie kosztów "z rachunku".
 * Wskazuje potencjalne oszczędności przy zmianie taryfy.
 * Wymaga podłączenia licznika energii (encyja `kWh`, typ `total_increasing`).

@@ -45,6 +45,12 @@ def get_current_g12w_price(dt: datetime, settings: dict[str, Any]) -> float | No
     return get_current_g12_price(dt, settings)
 
 
+def get_current_g12r_price(dt: datetime, settings: dict[str, Any]) -> float | None:
+    if dt.hour >= 22 or dt.hour < 7 or 13 <= dt.hour < 16:
+        return settings.get("price_offpeak")
+    return settings.get("price_peak")
+
+
 def get_current_g12n_price(dt: datetime, settings: dict[str, Any]) -> float | None:
     if _is_weekend_or_holiday(dt):
         return settings.get("price_offpeak")

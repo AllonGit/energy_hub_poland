@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Select Operation Mode - Energy Hub",
-        "description": "Choose how the integration should operate:\n- **Dynamic Tariff:** Monitoring market prices (RCE).\n- **Virtual G12/G12w Tariff:** Cost simulation for fixed tariffs.\n- **Comparison Mode:** Real-time comparison of all tariffs.",
+        "description": "Choose how the integration should operate:\n- **Dynamic Tariff:** Monitoring market prices (RCE).\n- **Virtual G12/G12w/G12r Tariff:** Cost simulation for fixed tariffs.\n- **Comparison Mode:** Real-time comparison of all tariffs.",
         "data": {
           "operation_mode": "Operation Mode"
         }
@@ -48,6 +48,15 @@
           "hours_peak_winter": "Peak hours - WINTER (e.g., 6-13,15-22)"
         }
       },
+      "g12r_config": {
+        "title": "G12r Tariff Configuration",
+        "description": "Enter G12r net rates. Off-peak hours are 22:00-7:00 and 13:00-16:00 every day.",
+        "data": {
+          "price_peak": "Peak price (PLN/kWh)",
+          "price_offpeak": "Off-peak price (PLN/kWh)",
+          "network_variable_fee": "Variable network fee (PLN/kWh)"
+        }
+      },
       "g12n_config": {
         "title": "G12n Tariff Configuration (PGE)",
         "description": "Enter G12n rates. Night/off-peak windows and Sundays/Holidays are pre-configured.",
@@ -79,6 +88,7 @@
           "g11": "G11 tariff",
           "g12": "G12 tariff",
           "g12w": "G12w tariff",
+          "g12r": "G12r tariff",
           "g12n": "G12n tariff",
           "g13": "G13 tariff"
         }
@@ -141,6 +151,9 @@
           "g12w_settings_network_variable_fee": "G12w - Variable network fee",
           "g12w_settings_hours_peak_summer": "G12w - Peak hours SUMMER",
           "g12w_settings_hours_peak_winter": "G12w - Peak hours WINTER",
+          "g12r_settings_price_peak": "G12r - Peak price",
+          "g12r_settings_price_offpeak": "G12r - Off-peak price",
+          "g12r_settings_network_variable_fee": "G12r - Variable network fee",
           "g12n_settings_price_peak": "G12n - Day price",
           "g12n_settings_price_offpeak": "G12n - Night price",
           "g12n_settings_network_variable_fee_peak": "G12n - Peak network fee",
@@ -164,6 +177,7 @@
         "g11": "Virtual G11 Tariff",
         "g12": "Virtual G12 Tariff",
         "g12w": "Virtual G12w Tariff",
+        "g12r": "Virtual G12r Tariff",
         "g12n": "Virtual G12n Tariff (PGE)",
         "g13": "Virtual G13 Tariff (Tauron)",
         "comparison": "Comparison Mode (all tariffs)"
@@ -208,6 +222,7 @@
           "g11": "G11 Tariff",
           "g12": "G12 Tariff",
           "g12w": "G12w Tariff",
+          "g12r": "G12r Tariff",
           "g12n": "G12n Tariff",
           "g13": "G13 Tariff",
           "brak_danych": "No data"
@@ -224,6 +239,9 @@
           },
           "savings_g12w_vs_dynamic": {
             "name": "Savings G12w vs Dynamic"
+          },
+          "savings_g12r_vs_dynamic": {
+            "name": "Savings G12r vs Dynamic"
           },
           "savings_g12n_vs_dynamic": {
             "name": "Savings G12n vs Dynamic"
@@ -291,6 +309,17 @@
       },
       "current_price_g12w": {
         "name": "Current price G12w",
+        "state_attributes": {
+          "network_variable_fee": {
+            "name": "Network variable fee"
+          },
+          "vat_rate": {
+            "name": "VAT Rate"
+          }
+        }
+      },
+      "current_price_g12r": {
+        "name": "Current price G12r",
         "state_attributes": {
           "network_variable_fee": {
             "name": "Network variable fee"
@@ -369,6 +398,9 @@
       },
       "cost_g12w": {
         "name": "Cost - G12w"
+      },
+      "cost_g12r": {
+        "name": "Cost - G12r"
       },
       "cost_g12n": {
         "name": "Cost - G12n"

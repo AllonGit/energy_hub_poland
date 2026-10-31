@@ -24,6 +24,7 @@ from .const import (
     CONF_G11_SETTINGS,
     CONF_G12_SETTINGS,
     CONF_G12N_SETTINGS,
+    CONF_G12R_SETTINGS,
     CONF_G12W_SETTINGS,
     CONF_G13_SETTINGS,
     CONF_NETWORK_VARIABLE_FEE,
@@ -47,6 +48,7 @@ from .const import (
     MODE_DYNAMIC,
     MODE_G12,
     MODE_G12N,
+    MODE_G12R,
     MODE_G12W,
     SENSOR_TYPE_DAILY,
     SENSOR_TYPE_TOTAL_INCREASING,
@@ -58,6 +60,7 @@ from .tariffs import (
     get_current_g11_price,
     get_current_g12_price,
     get_current_g12n_price,
+    get_current_g12r_price,
     get_current_g12w_price,
     get_current_g13_price,
 )
@@ -87,6 +90,8 @@ async def async_setup_entry(
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12", config))
     elif mode == MODE_G12W:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12w", config))
+    elif mode == MODE_G12R:
+        sensors.append(CurrentPriceSensor(coordinator, entry, "g12r", config))
     elif mode == MODE_G12N:
         sensors.append(CurrentPriceSensor(coordinator, entry, "g12n", config))
     elif mode == MODE_COMPARISON:
@@ -129,7 +134,8 @@ def setup_comparison_sensors(
 ) -> list[SensorEntity]:
     """Set up comparison mode sensors (enabled tariffs only)."""
     enabled_tariffs = config.get(
-        CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        CONF_ENABLED_TARIFFS,
+        ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"],
     )
     sensors: list[SensorEntity] = []
 
@@ -138,6 +144,7 @@ def setup_comparison_sensors(
         "g11": config,
         "g12": config,
         "g12w": config,
+        "g12r": config,
         "g12n": config,
         "g13": config,
     }
@@ -375,6 +382,9 @@ class EnergyConsumerEntity(EnergyHubSensorEntity, RestoreEntity):
             "g12w": get_current_g12w_price(
                 poland_now, self._config.get(CONF_G12W_SETTINGS, {})
             ),
+            "g12r": get_current_g12r_price(
+                poland_now, self._config.get(CONF_G12R_SETTINGS, {})
+            ),
             "g12n": get_current_g12n_price(
                 poland_now, self._config.get(CONF_G12N_SETTINGS, {})
             ),
@@ -450,7 +460,16 @@ class RecommendationSensor(EnergyConsumerEntity):
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_state_class = None
     _attr_icon = ICONS.get("recommendation")
-    _attr_options = ["dynamiczna", "g11", "g12", "g12w", "g12n", "g13", "brak_danych"]
+    _attr_options = [
+        "dynamiczna",
+        "g11",
+        "g12",
+        "g12w",
+        "g12r",
+        "g12n",
+        "g13",
+        "brak_danych",
+    ]
 
     def __init__(
         self, coordinator: EnergyHubDataCoordinator, entry: ConfigEntry
@@ -460,7 +479,8 @@ class RecommendationSensor(EnergyConsumerEntity):
         self._attr_translation_key = "recommendation"
         self._attr_unique_id = f"recommendation_{entry.entry_id}"
         self._enabled_tariffs = self._config.get(
-            CONF_ENABLED_TARIFFS, ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+            CONF_ENABLED_TARIFFS,
+            ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"],
         )
 
     async def async_added_to_hass(self) -> None:
@@ -731,6 +751,10 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
         elif self._tariff == "g12w":
             val = get_current_g12w_price(
                 poland_now, self._config.get(CONF_G12W_SETTINGS, {})
+            )
+        elif self._tariff == "g12r":
+            val = get_current_g12r_price(
+                poland_now, self._config.get(CONF_G12R_SETTINGS, {})
             )
         elif self._tariff == "g12n":
             val = get_current_g12n_price(

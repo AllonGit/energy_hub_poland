@@ -49,7 +49,7 @@ Moduły HA są zastąpione stubami w `conftest.py`.
 
 | Plik | Co testuje |
 |------|-----------|
-| `test_helpers.py` | `is_summer_time()`, `parse_hour_ranges()`, `is_peak_time()`, ceny G12/G12w, polskie święta |
+| `test_helpers.py` | `is_summer_time()`, `parse_hour_ranges()`, `is_peak_time()`, ceny G12/G12w/G12r, polskie święta |
 | `test_config_flow_validators.py` | `validate_hour_format()`, `validate_entity_id()` |
 | `test_coordinator_parse_prices.py` | `_parse_prices()` — konwersja JSON → dict godzinowy, obsługa błędnych danych |
 | `test_coordinator_update.py` | `_async_update_data()` — przejście dnia (tomorrow→today), ładowanie/zapis cache, zachowanie przy awarii API |

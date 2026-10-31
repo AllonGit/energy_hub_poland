@@ -67,11 +67,11 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         self.last_price_source: str | None = None
         self.data_status: str = "unknown"
         self.costs: dict[str, float] = dict.fromkeys(
-            ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
+            ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"], 0.0
         )
         self.cost_breakdown: dict[str, dict[str, float]] = {
             tariff: {"energy": 0.0, "variable_fee": 0.0, "vat": 0.0, "total": 0.0}
-            for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+            for tariff in ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"]
         }
         self.last_reset: datetime = dt_util.now().replace(
             day=1, hour=0, minute=0, second=0, microsecond=0
@@ -98,7 +98,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         """Ensure all runtime attributes exist even when coordinator is created via __new__."""
         if not hasattr(self, "costs") or self.costs is None:
             self.costs = dict.fromkeys(
-                ["dynamic", "g11", "g12", "g12w", "g12n", "g13"], 0.0
+                ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"], 0.0
             )
         if not hasattr(self, "cost_breakdown") or self.cost_breakdown is None:
             self.cost_breakdown = {
@@ -108,7 +108,15 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     "vat": 0.0,
                     "total": 0.0,
                 }
-                for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+                for tariff in [
+                    "dynamic",
+                    "g11",
+                    "g12",
+                    "g12w",
+                    "g12r",
+                    "g12n",
+                    "g13",
+                ]
             }
         if not hasattr(self, "last_reset") or self.last_reset is None:
             self.last_reset = dt_util.now().replace(
@@ -324,7 +332,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Update accumulated costs with a new energy increment and breakdown."""
         self._ensure_runtime_state()
-        legacy_keys = ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
+        legacy_keys = ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"]
         for key in legacy_keys:
             if key not in self.costs:
                 self.costs[key] = 0.0
