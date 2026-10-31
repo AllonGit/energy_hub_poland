@@ -95,7 +95,12 @@ class TestMonthlyCostReset:
             tomorrow=None,
             tomorrow_date=None,
         )
-        coord._fetch_data = AsyncMock(return_value=None)
+
+        async def fetch_prices(day):
+            coord._internal_data["today"] = PRICES_TODAY
+            coord._internal_data["today_date"] = day
+
+        coord._update_pse_prices = AsyncMock(side_effect=fetch_prices)
         coord.last_reset = last_reset
         coord.costs["g11"] = 42.0
         return coord
@@ -619,3 +624,57 @@ class TestLegacyPriceCache:
         )
         await coord._save_cache()
         assert coord.store.async_save.call_args.args[0]["price_cache_revision"] == 1
+
+
+class TestPollingAndMidnight:
+    @pytest.mark.asyncio
+    async def test_frequent_cost_updates_do_not_postpone_poll(self):
+        coord = _make_coordinator(today=PRICES_TODAY, today_date=TODAY)
+        coord._ensure_runtime_state()
+        clock = {"now": 0, "deadline": 300}
+
+        def reset_poll(data):
+            clock["deadline"] = clock["now"] + 300
+
+        coord.async_set_updated_data = MagicMock(side_effect=reset_poll)
+        coord.async_update_listeners = MagicMock()
+        coord._save_cache = MagicMock(return_value=None)
+        for second in range(10, 301, 10):
+            clock["now"] = second
+            coord.async_update_costs(0.01, {"dynamic": {"total": 1.0}})
+        assert clock["now"] >= clock["deadline"]
+        assert coord.costs["dynamic"] == pytest.approx(0.30)
+        assert coord.async_update_listeners.call_count == 30
+
+    @pytest.mark.asyncio
+    async def test_midnight_rotates_before_successful_fetch(self):
+        coord = _make_coordinator(
+            today=PRICES_TODAY,
+            today_date=TODAY - timedelta(days=1),
+            tomorrow=PRICES_TOMORROW,
+            tomorrow_date=TODAY,
+        )
+        coord._fetch_pge_prices = AsyncMock(return_value=None)
+        early = NOW.replace(hour=0, minute=5)
+        with _patch_now(early), _patch_utcnow(early.astimezone(UTC)):
+            result = await coord._async_update_data()
+        assert result["today"] == PRICES_TOMORROW
+        assert result["tomorrow"] is None
+        assert coord._internal_data["today_date"] == TODAY
+
+    @pytest.mark.asyncio
+    async def test_successful_fetch_does_not_leave_yesterday_tomorrow(self):
+        coord = _make_coordinator(
+            today=PRICES_TODAY,
+            today_date=TODAY - timedelta(days=1),
+            tomorrow=PRICES_TOMORROW,
+            tomorrow_date=TODAY,
+        )
+        coord.pse_client.get_rce_prices.return_value = [
+            {"dtime": f"{TODAY} 01:00:00", "rce_pln": 500}
+        ]
+        coord._fetch_pge_prices = AsyncMock(return_value=None)
+        with _patch_now(NOW), _patch_utcnow(NOW_UTC):
+            result = await coord._async_update_data()
+        assert result["today"][0] == 0.5
+        assert result["tomorrow"] is None

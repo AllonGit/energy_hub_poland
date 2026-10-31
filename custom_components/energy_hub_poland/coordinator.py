@@ -368,7 +368,8 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
 
         self.data["costs"] = self.costs
         self.data["cost_breakdown"] = self.cost_breakdown
-        self.async_set_updated_data(self.data)
+        # Local accounting changes must not postpone the next API poll.
+        self.async_update_listeners()
         self.hass.async_create_task(self._save_cache())
 
     def _refresh_diagnostic_state(self) -> None:
@@ -410,6 +411,19 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         poland_tz = ZoneInfo("Europe/Warsaw")
         poland_now = now.astimezone(poland_tz)
         today_date = poland_now.date()
+
+        # Rotate cached prices before fetching: a successful fetch updates
+        # today_date and would otherwise hide yesterday's tomorrow data.
+        if self._internal_data.get("today_date") != today_date:
+            if self._internal_data.get("tomorrow_date") == today_date:
+                self._internal_data["today"] = self._internal_data["tomorrow"]
+                self._internal_data["today_date"] = today_date
+            else:
+                self._internal_data["today"] = None
+                self._internal_data["today_date"] = None
+        if self._internal_data.get("tomorrow_date") != today_date + timedelta(days=1):
+            self._internal_data["tomorrow"] = None
+            self._internal_data["tomorrow_date"] = None
 
         # Compare the month, not the day: a reset missed on the 1st (HA down,
         # setup failed) still fires on the next update. Poland time throughout.
@@ -479,16 +493,6 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 self._error_count += 1
 
         self._adjust_update_interval()
-
-        if (
-            self._internal_data["today_date"]
-            and self._internal_data["today_date"] < today_date
-        ):
-            _LOGGER.debug("Day transition: moving tomorrow data to today")
-            self._internal_data["today"] = self._internal_data["tomorrow"]
-            self._internal_data["today_date"] = self._internal_data["tomorrow_date"]
-            self._internal_data["tomorrow"] = None
-            self._internal_data["tomorrow_date"] = None
 
         self._refresh_diagnostic_state()
         await self._save_cache()
