@@ -24,7 +24,7 @@ class PSEApiClient:
         }
         self._last_response_schema: str | None = None
 
-    async def _async_get_data(
+    async def _async_get_data(  # type: ignore[return]  # mypy baseline, see #46
         self, endpoint: str, select_fields: str, for_date: date
     ) -> list[dict[str, Any]] | None:
         """Fetch generic data from PSE API with retry logic."""
