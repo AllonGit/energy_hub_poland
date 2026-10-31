@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 import async_timeout
@@ -119,62 +119,30 @@ class EnergyHubApiClient:
         self._session = session
 
     async def async_get_prices(self, for_date: date) -> list[dict[str, Any]] | None:
-        """
-        Fetch energy prices for a specific date.
-
-        Some days have no data published yet, so we fall back to the most recent
-        available date within a short window rather than returning an empty payload.
-        """
-        candidate_dates = [for_date]
-        if for_date >= date.today() - timedelta(days=1):
-            candidate_dates.extend(
-                for_date - timedelta(days=offset) for offset in range(1, 7)
-            )
-
-        for current_date in candidate_dates:
-            date_str = current_date.strftime("%Y-%m-%d")
-            url = (
-                f"{API_URL}?source=TGE&contract=Fix_2"
-                f"&date_from={date_str} 00:00:00"
-                f"&date_to={date_str} 23:59:59&limit=100"
-            )
-
-            try:
-                async with async_timeout.timeout(20):
-                    response = await self._session.get(
-                        url,
-                        headers={"User-Agent": "HomeAssistant/EnergyHubPoland"},
-                    )
-                    response.raise_for_status()
-                    payload = await response.json()
-                    if isinstance(payload, list) and payload:
-                        return payload
-                    if isinstance(payload, dict):
-                        data = payload.get("data") or payload.get("value")
-                        if isinstance(data, list) and data:
-                            return data
-            except Exception as e:
-                _LOGGER.warning(
-                    "Error communicating with API for date %s, trying fallback: %s",
-                    date_str,
-                    e,
-                )
-
-        if for_date >= date.today() - timedelta(days=1):
-            _LOGGER.info(
-                "No price data available for %s; returning a neutral zero-price fallback",
-                for_date.strftime("%Y-%m-%d"),
-            )
-            return [
-                {
-                    "date_time": f"{for_date.strftime('%Y-%m-%d')} {hour:02d}:00:00",
-                    "attributes": [{"name": "price", "value": "0"}],
-                }
-                for hour in range(24)
-            ]
-
-        _LOGGER.warning(
-            "No price data available for %s or the recent fallback window",
-            for_date.strftime("%Y-%m-%d"),
+        """Fetch prices for the requested trading date, or None if unavailable."""
+        date_str = for_date.strftime("%Y-%m-%d")
+        url = (
+            f"{API_URL}?source=TGE&contract=Fix_2"
+            f"&date_from={date_str} 00:00:00"
+            f"&date_to={date_str} 23:59:59&limit=100"
         )
+
+        try:
+            async with async_timeout.timeout(20):
+                response = await self._session.get(
+                    url,
+                    headers={"User-Agent": "HomeAssistant/EnergyHubPoland"},
+                )
+                response.raise_for_status()
+                payload = await response.json()
+                if isinstance(payload, list) and payload:
+                    return payload
+                if isinstance(payload, dict):
+                    data = payload.get("data") or payload.get("value")
+                    if isinstance(data, list) and data:
+                        return data
+        except Exception as e:
+            _LOGGER.warning("Error communicating with API for date %s: %s", date_str, e)
+
+        _LOGGER.debug("No price data available for %s", date_str)
         return None
