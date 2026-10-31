@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -76,6 +77,80 @@ TODAY = date(2025, 1, 15)
 TOMORROW = date(2025, 1, 16)
 NOW = datetime(2025, 1, 15, 14, 0, 0, tzinfo=timezone(timedelta(hours=1)))
 NOW_UTC = datetime(2025, 1, 15, 13, 0, 0, tzinfo=UTC)
+WARSAW = ZoneInfo("Europe/Warsaw")
+
+
+# ============================================================
+# Monthly cost reset (#50)
+# ============================================================
+
+
+class TestMonthlyCostReset:
+    def _make(self, last_reset):
+        coord = _make_coordinator(
+            today=PRICES_TODAY,
+            today_date=None,
+            tomorrow=None,
+            tomorrow_date=None,
+        )
+        coord._fetch_data = AsyncMock(return_value=None)
+        coord.last_reset = last_reset
+        coord.costs["g11"] = 42.0
+        return coord
+
+    @pytest.mark.asyncio
+    async def test_reset_on_first_of_month(self):
+        coord = self._make(datetime(2025, 1, 1, tzinfo=WARSAW))
+        now = datetime(2025, 2, 1, 0, 5, tzinfo=WARSAW)
+
+        with _patch_now(now), _patch_utcnow(now.astimezone(UTC)):
+            await coord._async_update_data()
+
+        assert coord.costs["g11"] == 0.0
+        assert coord.last_reset == datetime(2025, 2, 1, tzinfo=WARSAW)
+
+    @pytest.mark.asyncio
+    async def test_reset_missed_on_first_still_fires_later(self):
+        """HA down for all of the 1st: the reset must fire on the next update."""
+        coord = self._make(datetime(2025, 1, 1, tzinfo=WARSAW))
+        now = datetime(2025, 2, 3, 9, 30, tzinfo=WARSAW)
+
+        with _patch_now(now), _patch_utcnow(now.astimezone(UTC)):
+            await coord._async_update_data()
+
+        assert coord.costs["g11"] == 0.0
+        assert coord.last_reset == datetime(2025, 2, 3, tzinfo=WARSAW)
+
+    @pytest.mark.asyncio
+    async def test_no_reset_within_same_month(self):
+        coord = self._make(datetime(2025, 1, 1, tzinfo=WARSAW))
+        now = datetime(2025, 1, 31, 23, 0, tzinfo=WARSAW)
+
+        with _patch_now(now), _patch_utcnow(now.astimezone(UTC)):
+            await coord._async_update_data()
+
+        assert coord.costs["g11"] == 42.0
+
+    @pytest.mark.asyncio
+    async def test_month_boundary_uses_poland_time(self):
+        """HA in UTC: 23:30 UTC on Jan 31 is already Feb 1 in Poland."""
+        coord = self._make(datetime(2025, 1, 1, tzinfo=WARSAW))
+        now = datetime(2025, 1, 31, 23, 30, tzinfo=UTC)
+
+        with _patch_now(now), _patch_utcnow(now):
+            await coord._async_update_data()
+
+        assert coord.costs["g11"] == 0.0
+        assert coord.last_reset == datetime(2025, 2, 1, tzinfo=WARSAW)
+
+    def test_initial_last_reset_is_now_not_first_of_month(self):
+        coord = EnergyHubDataCoordinator.__new__(EnergyHubDataCoordinator)
+        now = datetime(2025, 1, 27, 15, 42, 7, 123456, tzinfo=WARSAW)
+
+        with _patch_now(now):
+            coord._ensure_runtime_state()
+
+        assert coord.last_reset == datetime(2025, 1, 27, 15, 42, 7, tzinfo=WARSAW)
 
 
 # ============================================================

@@ -73,9 +73,8 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
             tariff: {"energy": 0.0, "variable_fee": 0.0, "vat": 0.0, "total": 0.0}
             for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
         }
-        self.last_reset: datetime = dt_util.now().replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
+        # Accumulation starts now; _load_cache restores a persisted value.
+        self.last_reset: datetime = dt_util.now().replace(microsecond=0)
         self.data = self._build_data_payload()
 
     def _default_internal_data(self) -> dict[str, Any]:
@@ -111,9 +110,7 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                 for tariff in ["dynamic", "g11", "g12", "g12w", "g12n", "g13"]
             }
         if not hasattr(self, "last_reset") or self.last_reset is None:
-            self.last_reset = dt_util.now().replace(
-                day=1, hour=0, minute=0, second=0, microsecond=0
-            )
+            self.last_reset = dt_util.now().replace(microsecond=0)
         if not hasattr(self, "_internal_data") or self._internal_data is None:
             self._internal_data = self._default_internal_data()
         else:
@@ -406,7 +403,13 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
         poland_now = now.astimezone(poland_tz)
         today_date = poland_now.date()
 
-        if now.day == 1 and self.last_reset.month != now.month:
+        # Compare the month, not the day: a reset missed on the 1st (HA down,
+        # setup failed) still fires on the next update. Poland time throughout.
+        last_reset_poland = self.last_reset.astimezone(poland_tz)
+        if (poland_now.year, poland_now.month) != (
+            last_reset_poland.year,
+            last_reset_poland.month,
+        ):
             _LOGGER.info("Monthly cost reset triggered")
             self.costs = dict.fromkeys(self.costs, 0.0)
 
@@ -419,7 +422,9 @@ class EnergyHubDataCoordinator(DataUpdateCoordinator):
                     "total": 0.0,
                 }
 
-            self.last_reset = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            self.last_reset = poland_now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
 
         try:
             await self._update_pse_frequent_data(today_date)
