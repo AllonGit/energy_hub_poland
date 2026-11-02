@@ -67,14 +67,14 @@ def get_current_g13_price(dt: datetime, settings: dict[str, Any]) -> float | Non
         dt,
         settings,
         summer_key="hours_peak_1_summer",
-        winter_key="hours_peak_1_winter",
+        winter_key="hours_peak_1_winter",  # gitleaks:allow
         default="7-13",
     )
     p2_hours = _get_peak_hours(
         dt,
         settings,
         summer_key="hours_peak_2_summer",
-        winter_key="hours_peak_2_winter",
+        winter_key="hours_peak_2_winter",  # gitleaks:allow
         default="16-21",
     )
 
