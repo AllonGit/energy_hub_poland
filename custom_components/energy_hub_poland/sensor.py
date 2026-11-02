@@ -822,8 +822,8 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
                 attrs.update({"today_prices": {}, "tomorrow_prices": {}})  # type: ignore[dict-item]  # mypy baseline, see #46
                 return attrs
 
-            today_raw = self.coordinator.data.get("today", {})
-            tomorrow_raw = self.coordinator.data.get("tomorrow", {})
+            today_raw = self.coordinator.data.get("today") or {}
+            tomorrow_raw = self.coordinator.data.get("tomorrow") or {}
 
             today_total: dict[Any, float | None] = {
                 h: (

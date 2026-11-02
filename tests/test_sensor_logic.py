@@ -541,3 +541,18 @@ class TestTariffCostSensorRestore:
 
         assert sensor.coordinator.costs["g11"] == 0.0
         sensor.coordinator.async_set_updated_data.assert_not_called()
+
+
+@pytest.mark.parametrize("missing_day", ["today", "tomorrow"])
+def test_dynamic_attributes_allow_missing_day(missing_day):
+    sensor = CurrentPriceSensor.__new__(CurrentPriceSensor)
+    sensor._tariff = "dynamic"
+    sensor._config = {}
+    sensor._price_unit = UNIT_KWH
+    sensor.coordinator = MagicMock()
+    sensor.coordinator.data = {"today": {0: 0.5}, "tomorrow": {0: 0.6}}
+    sensor.coordinator.data[missing_day] = None
+    attrs = sensor.extra_state_attributes
+    assert attrs[missing_day + "_prices"] == {}
+    other = "today" if missing_day == "tomorrow" else "tomorrow"
+    assert len(attrs[other + "_prices"]) == 1
