@@ -12,7 +12,7 @@
 **For the Polish version click [here](README.md)**
 
 <p align="center">
-  <img src="custom_components/energy_hub_poland/brands/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
+  <img src="custom_components/energy_hub_poland/brand/dark_logo@2x.png" width="400" alt="Energy Hub Poland Logo">
 </p>
 
 ---
