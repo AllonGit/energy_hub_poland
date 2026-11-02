@@ -30,3 +30,6 @@ jobs:
           VALIDATE_GITLEAKS: true
           VALIDATE_PYTHON_RUFF: true
           VALIDATE_PYTHON_MYPY: true
+          # mypy reads [tool.mypy] from pyproject.toml instead of super-linter's built-in template
+          LINTER_RULES_PATH: .
+          PYTHON_MYPY_CONFIG_FILE: pyproject.toml
