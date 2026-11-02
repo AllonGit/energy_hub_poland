@@ -82,6 +82,19 @@ NOW_UTC = datetime(2025, 1, 15, 13, 0, 0, tzinfo=UTC)
 WARSAW = ZoneInfo("Europe/Warsaw")
 
 
+def _set_successful_price_update(
+    coord: EnergyHubDataCoordinator,
+    prices: dict[int, float] = PRICES_TODAY,
+) -> None:
+    """Mock a successful PSE update and persist the fetched day in runtime state."""
+
+    async def update_prices(fetch_date: date) -> None:
+        coord._internal_data["today"] = prices
+        coord._internal_data["today_date"] = fetch_date
+
+    coord._update_pse_prices = AsyncMock(side_effect=update_prices)
+
+
 # ============================================================
 # Monthly cost reset (#50)
 # ============================================================
@@ -206,9 +219,6 @@ class TestDayTransition:
         assert result["today"] == PRICES_TODAY
         assert result["tomorrow"] == PRICES_TOMORROW
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_transition_then_fetch_new_today(self):
         """After transition, if transitioned today is wrong date, fetch new data."""
@@ -219,18 +229,12 @@ class TestDayTransition:
             tomorrow=None,  # no tomorrow data available
             tomorrow_date=None,
         )
-
-        async def mock_fetch(fetch_date):
-            if fetch_date == TODAY:
-                return new_today_prices
-            return None
-
-        coord._fetch_data = AsyncMock(side_effect=mock_fetch)
+        _set_successful_price_update(coord, new_today_prices)
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             result = await coord._async_update_data()
 
-        # After transition, tomorrow was None → today becomes None → fetch is called
+        coord._update_pse_prices.assert_awaited_once_with(TODAY)
         assert result["today"] == new_today_prices
         assert coord._internal_data["today_date"] == TODAY
 
@@ -241,15 +245,12 @@ class TestDayTransition:
 
 
 class TestCache:
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_cache_loaded_on_first_run(self):
         """_load_cache is called on first update when cache_loaded is False."""
         coord = _make_coordinator(cache_loaded=False)
         coord._load_cache = AsyncMock()
-        coord._fetch_data = AsyncMock(return_value=PRICES_TODAY)
+        _set_successful_price_update(coord)
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             await coord._async_update_data()
@@ -273,38 +274,31 @@ class TestCache:
 
         coord._load_cache.assert_not_awaited()
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_cache_saved_when_data_updated(self):
         """_save_cache is called when new data is fetched."""
         coord = _make_coordinator()
-        coord._fetch_data = AsyncMock(return_value=PRICES_TODAY)
+        _set_successful_price_update(coord)
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             await coord._async_update_data()
 
         coord.store.async_save.assert_awaited()
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
-    async def test_cache_not_saved_when_no_change(self):
-        """_save_cache is NOT called when data didn't change."""
+    async def test_cache_saved_when_prices_do_not_change(self):
+        """The cache is refreshed even when the API price data is unchanged."""
         coord = _make_coordinator(
             today=PRICES_TODAY,
             today_date=TODAY,
             tomorrow=PRICES_TOMORROW,
             tomorrow_date=TOMORROW,
         )
-        coord._fetch_data = AsyncMock(return_value=None)
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             await coord._async_update_data()
 
-        coord.store.async_save.assert_not_awaited()
+        coord.store.async_save.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_load_cache_restores_data(self):
@@ -378,14 +372,11 @@ class TestApiFailure:
         # api_connected stays True because we have data from cache/transition
         assert coord.api_connected is True
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_api_failure_no_data_raises_update_failed(self):
         """If API fails and no cached data exists, raise UpdateFailed."""
         coord = _make_coordinator()
-        coord._fetch_data = AsyncMock(return_value=None)
+        coord._update_pse_prices = AsyncMock(side_effect=RuntimeError("offline"))
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             with pytest.raises(UpdateFailed):
@@ -393,9 +384,6 @@ class TestApiFailure:
 
         assert coord.api_connected is False
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_api_failure_sets_disconnected_only_when_no_data(self):
         """api_connected=False only when today data is completely empty."""
@@ -403,11 +391,9 @@ class TestApiFailure:
             today=PRICES_TODAY,
             today_date=date(2025, 1, 14),  # stale date
         )
-        coord._fetch_data = AsyncMock(return_value=None)
+        coord._update_pse_prices = AsyncMock(side_effect=RuntimeError("offline"))
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
-            # Day transition moves tomorrow (None) to today → today becomes None
-            # Then fetch fails → no data → UpdateFailed
             with pytest.raises(UpdateFailed):
                 await coord._async_update_data()
 
@@ -449,15 +435,12 @@ class TestApiFailure:
         assert coord.last_error_message == "Failed to fetch frequent PSE data: boom"
         assert coord.api_connected is False
 
-    @pytest.mark.skip(
-        reason="Awaiting refactor for new _update_pse_prices architecture"
-    )
     @pytest.mark.asyncio
     async def test_successful_fetch_sets_connected(self):
         """Successful API call sets api_connected=True."""
         coord = _make_coordinator()
         coord.api_connected = False
-        coord._fetch_data = AsyncMock(return_value=PRICES_TODAY)
+        _set_successful_price_update(coord)
 
         with _patch_now(NOW), _patch_utcnow(NOW_UTC):
             await coord._async_update_data()
