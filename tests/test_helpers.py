@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 import holidays
 
+from custom_components.energy_hub_poland.const import ZONE_OFFPEAK, ZONE_PEAK
 from custom_components.energy_hub_poland.helpers import (
     is_peak_time,
     is_summer,
@@ -122,7 +123,9 @@ class TestGetCurrentG12Price:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12_price(dt, settings) == 0.80
+        res = get_current_g12_price(dt, settings)
+        assert res.price == 0.80
+        assert res.zone == ZONE_PEAK
 
     def test_offpeak_hour_returns_offpeak_price(self):
         dt = datetime(2025, 1, 15, 22, 0, 0, tzinfo=WARSAW)
@@ -131,7 +134,9 @@ class TestGetCurrentG12Price:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12_price(dt, settings) == 0.50
+        res = get_current_g12_price(dt, settings)
+        assert res.price == 0.50
+        assert res.zone == ZONE_OFFPEAK
 
 
 # ============================================================
@@ -148,40 +153,9 @@ class TestGetCurrentG12wPrice:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12w_price(dt, settings) == 0.50
-
-
-# ============================================================
-# get_current_g12r_price
-# ============================================================
-
-
-class TestGetCurrentG12rPrice:
-    def test_fixed_offpeak_windows_and_boundaries(self):
-        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
-        expected_prices = {
-            6: 0.50,
-            7: 0.80,
-            12: 0.80,
-            13: 0.50,
-            15: 0.50,
-            16: 0.80,
-            21: 0.80,
-            22: 0.50,
-            23: 0.50,
-        }
-
-        for hour, expected in expected_prices.items():
-            dt = datetime(2025, 1, 15, hour, 0, 0, tzinfo=WARSAW)
-            assert get_current_g12r_price(dt, settings) == expected
-
-    def test_schedule_applies_on_weekends_and_holidays(self):
-        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
-        saturday = datetime(2025, 1, 18, 10, 0, 0, tzinfo=WARSAW)
-        holiday = datetime(2025, 11, 11, 10, 0, 0, tzinfo=WARSAW)
-
-        assert get_current_g12r_price(saturday, settings) == 0.80
-        assert get_current_g12r_price(holiday, settings) == 0.80
+        res = get_current_g12w_price(dt, settings)
+        assert res.price == 0.50
+        assert res.zone == ZONE_OFFPEAK
 
     def test_sunday_returns_offpeak(self):
         dt = datetime(2025, 1, 19, 10, 0, 0, tzinfo=WARSAW)
@@ -190,7 +164,9 @@ class TestGetCurrentG12rPrice:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12w_price(dt, settings) == 0.50
+        res = get_current_g12w_price(dt, settings)
+        assert res.price == 0.50
+        assert res.zone == ZONE_OFFPEAK
 
     def test_polish_holiday_returns_offpeak(self):
         # Nov 11 is Polish Independence Day (Tuesday in 2025)
@@ -202,7 +178,9 @@ class TestGetCurrentG12rPrice:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12w_price(dt, settings) == 0.50
+        res = get_current_g12w_price(dt, settings)
+        assert res.price == 0.50
+        assert res.zone == ZONE_OFFPEAK
 
     def test_weekday_peak_returns_peak_price(self):
         # Wednesday Jan 15, 2025
@@ -212,7 +190,9 @@ class TestGetCurrentG12rPrice:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12w_price(dt, settings) == 0.80
+        res = get_current_g12w_price(dt, settings)
+        assert res.price == 0.80
+        assert res.zone == ZONE_PEAK
 
     def test_weekday_offpeak_returns_offpeak_price(self):
         # Wednesday 22:00
@@ -222,4 +202,43 @@ class TestGetCurrentG12rPrice:
             "price_peak": 0.80,
             "price_offpeak": 0.50,
         }
-        assert get_current_g12w_price(dt, settings) == 0.50
+        res = get_current_g12w_price(dt, settings)
+        assert res.price == 0.50
+        assert res.zone == ZONE_OFFPEAK
+
+
+# ============================================================
+# get_current_g12r_price
+# ============================================================
+
+
+class TestGetCurrentG12rPrice:
+    def test_fixed_offpeak_windows_and_boundaries(self):
+        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
+        expected = {
+            6: (0.50, ZONE_OFFPEAK),
+            7: (0.80, ZONE_PEAK),
+            12: (0.80, ZONE_PEAK),
+            13: (0.50, ZONE_OFFPEAK),
+            15: (0.50, ZONE_OFFPEAK),
+            16: (0.80, ZONE_PEAK),
+            21: (0.80, ZONE_PEAK),
+            22: (0.50, ZONE_OFFPEAK),
+            23: (0.50, ZONE_OFFPEAK),
+        }
+
+        for hour, (price, zone) in expected.items():
+            dt = datetime(2025, 1, 15, hour, 0, 0, tzinfo=WARSAW)
+            res = get_current_g12r_price(dt, settings)
+            assert res.price == price
+            assert res.zone == zone
+
+    def test_schedule_applies_on_weekends_and_holidays(self):
+        settings = {"price_peak": 0.80, "price_offpeak": 0.50}
+        saturday = datetime(2025, 1, 18, 10, 0, 0, tzinfo=WARSAW)
+        holiday = datetime(2025, 11, 11, 10, 0, 0, tzinfo=WARSAW)
+
+        for dt in (saturday, holiday):
+            res = get_current_g12r_price(dt, settings)
+            assert res.price == 0.80
+            assert res.zone == ZONE_PEAK

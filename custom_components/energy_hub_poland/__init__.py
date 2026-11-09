@@ -4,7 +4,8 @@ from typing import Any
 import homeassistant.helpers.config_validation as cv
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.event import async_track_time_change
 
 from .const import DOMAIN
 from .coordinator import EnergyHubDataCoordinator
@@ -71,6 +72,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+
+    @callback
+    def _handle_hourly_update(_now: Any) -> None:
+        """Notify entities on the hour to update price status and current prices."""
+        _LOGGER.debug("Hourly trigger: refreshing coordinator listeners")
+        coordinator.async_update_listeners()
+
+    entry.async_on_unload(
+        async_track_time_change(hass, _handle_hourly_update, minute=0, second=0)
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
