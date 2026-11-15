@@ -79,6 +79,28 @@ _LOGGER = logging.getLogger(__package__)
 
 DEFAULT_G12_PEAK_HOURS = "6-13,15-22"
 
+# Settings names accepted by the options flow and their stored tariff keys.
+ZONE_NETWORK_FEES = {
+    CONF_G12_SETTINGS: {
+        "network_variable_fee_peak": CONF_NETWORK_VARIABLE_FEE_G12_PEAK,
+        "network_variable_fee_offpeak": CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
+    },
+    CONF_G12W_SETTINGS: {
+        "network_variable_fee_peak": CONF_NETWORK_VARIABLE_FEE_G12W_PEAK,
+        "network_variable_fee_offpeak": CONF_NETWORK_VARIABLE_FEE_G12W_OFFPEAK,
+    },
+    CONF_G12N_SETTINGS: {
+        "network_variable_fee_peak": CONF_NETWORK_VARIABLE_FEE_G12N_PEAK,
+        "network_variable_fee_offpeak": CONF_NETWORK_VARIABLE_FEE_G12N_OFFPEAK,
+    },
+    CONF_G13_SETTINGS: {
+        "network_variable_fee_peak1": CONF_NETWORK_VARIABLE_FEE_G13_PEAK1,
+        "network_variable_fee_peak2": CONF_NETWORK_VARIABLE_FEE_G13_PEAK2,
+        "network_variable_fee_offpeak": CONF_NETWORK_VARIABLE_FEE_G13_OFFPEAK,
+    },
+}
+
+
 PROVIDER_DEFAULTS = {
     PROVIDER_PGE: {
         CONF_HOURS_PEAK: "6-13,15-22",
@@ -749,23 +771,29 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                     prefix_with_underscore = f"{prefix}_"
                     settings = {}
                     keys_to_remove = []
+                    zone_fees = ZONE_NETWORK_FEES.get(settings_key, {})
                     for k, v in temp_input.items():
-                        if k.startswith(prefix_with_underscore) and k.replace(
-                            prefix_with_underscore, ""
-                        ) in [
-                            CONF_PRICE_PEAK,
-                            CONF_PRICE_OFFPEAK,
-                            CONF_PRICE_PEAK_1,
-                            CONF_PRICE_PEAK_2,
-                            CONF_HOURS_PEAK_SUMMER,
-                            CONF_HOURS_PEAK_WINTER,
-                            CONF_HOURS_PEAK_1_SUMMER,
-                            CONF_HOURS_PEAK_2_SUMMER,
-                            CONF_HOURS_PEAK_1_WINTER,
-                            CONF_HOURS_PEAK_2_WINTER,
-                            "network_variable_fee",
-                        ]:
-                            settings[k.replace(prefix_with_underscore, "")] = v
+                        if not k.startswith(prefix_with_underscore):
+                            continue
+                        field = k.removeprefix(prefix_with_underscore)
+                        if (
+                            field
+                            in [
+                                CONF_PRICE_PEAK,
+                                CONF_PRICE_OFFPEAK,
+                                CONF_PRICE_PEAK_1,
+                                CONF_PRICE_PEAK_2,
+                                CONF_HOURS_PEAK_SUMMER,
+                                CONF_HOURS_PEAK_WINTER,
+                                CONF_HOURS_PEAK_1_SUMMER,
+                                CONF_HOURS_PEAK_2_SUMMER,
+                                CONF_HOURS_PEAK_1_WINTER,
+                                CONF_HOURS_PEAK_2_WINTER,
+                                CONF_NETWORK_VARIABLE_FEE,
+                            ]
+                            or field in zone_fees
+                        ):
+                            settings[zone_fees.get(field, field)] = v
                             keys_to_remove.append(k)
                     if settings:
                         new_options[settings_key] = settings
@@ -881,12 +909,19 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_PRICE_OFFPEAK, 0.50),
                     )
                 ] = vol.Coerce(float)
-                schema[
-                    vol.Optional(
-                        "g12_settings_network_variable_fee",
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
-                    )
-                ] = vol.Coerce(float)
+                for fee, key in ZONE_NETWORK_FEES[CONF_G12_SETTINGS].items():
+                    schema[
+                        vol.Optional(
+                            f"g12_settings_{fee}",
+                            default=s.get(
+                                key,
+                                s.get(
+                                    CONF_NETWORK_VARIABLE_FEE,
+                                    config.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                                ),
+                            ),
+                        )
+                    ] = vol.All(vol.Coerce(float), vol.Range(min=0))
                 schema[
                     vol.Required(
                         "g12_settings_hours_peak_summer",
@@ -912,12 +947,19 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_PRICE_OFFPEAK, 0.55),
                     )
                 ] = vol.Coerce(float)
-                schema[
-                    vol.Optional(
-                        "g12w_settings_network_variable_fee",
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
-                    )
-                ] = vol.Coerce(float)
+                for fee, key in ZONE_NETWORK_FEES[CONF_G12W_SETTINGS].items():
+                    schema[
+                        vol.Optional(
+                            f"g12w_settings_{fee}",
+                            default=s.get(
+                                key,
+                                s.get(
+                                    CONF_NETWORK_VARIABLE_FEE,
+                                    config.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                                ),
+                            ),
+                        )
+                    ] = vol.All(vol.Coerce(float), vol.Range(min=0))
                 schema[
                     vol.Required(
                         "g12w_settings_hours_peak_summer",
@@ -963,12 +1005,19 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_PRICE_OFFPEAK, 0.45),
                     )
                 ] = vol.Coerce(float)
-                schema[
-                    vol.Optional(
-                        "g12n_settings_network_variable_fee",
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
-                    )
-                ] = vol.Coerce(float)
+                for fee, key in ZONE_NETWORK_FEES[CONF_G12N_SETTINGS].items():
+                    schema[
+                        vol.Optional(
+                            f"g12n_settings_{fee}",
+                            default=s.get(
+                                key,
+                                s.get(
+                                    CONF_NETWORK_VARIABLE_FEE,
+                                    config.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                                ),
+                            ),
+                        )
+                    ] = vol.All(vol.Coerce(float), vol.Range(min=0))
             elif t == MODE_G13:
                 s = config.get(CONF_G13_SETTINGS, {})
                 schema[
@@ -989,12 +1038,19 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
                         default=s.get(CONF_PRICE_OFFPEAK, 0.50),
                     )
                 ] = vol.Coerce(float)
-                schema[
-                    vol.Optional(
-                        "g13_settings_network_variable_fee",
-                        default=s.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
-                    )
-                ] = vol.Coerce(float)
+                for fee, key in ZONE_NETWORK_FEES[CONF_G13_SETTINGS].items():
+                    schema[
+                        vol.Optional(
+                            f"g13_settings_{fee}",
+                            default=s.get(
+                                key,
+                                s.get(
+                                    CONF_NETWORK_VARIABLE_FEE,
+                                    config.get(CONF_NETWORK_VARIABLE_FEE, 0.0),
+                                ),
+                            ),
+                        )
+                    ] = vol.All(vol.Coerce(float), vol.Range(min=0))
 
         return self.async_show_form(
             step_id="reconfigure", data_schema=vol.Schema(schema), errors=errors

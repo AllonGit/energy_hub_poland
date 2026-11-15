@@ -27,6 +27,7 @@ from .const import (
     CONF_G12R_SETTINGS,
     CONF_G12W_SETTINGS,
     CONF_G13_SETTINGS,
+    CONF_NETWORK_FIXED_FEE,
     CONF_NETWORK_VARIABLE_FEE,
     CONF_NETWORK_VARIABLE_FEE_DYNAMIC,
     CONF_NETWORK_VARIABLE_FEE_G12_OFFPEAK,
@@ -798,7 +799,7 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Expose price forecast tables and statistics for visualization."""
-        attrs = {}
+        attrs: dict[str, Any] = {}
 
         variable_fee = None
         if self._tariff == "dynamic":
@@ -816,6 +817,47 @@ class CurrentPriceSensor(EnergyHubSensorEntity):
 
         attrs["network_variable_fee"] = float(variable_fee)
         attrs["vat_rate"] = f"{self._config.get(CONF_VAT_RATE, '0')}%"  # type: ignore[assignment]  # mypy baseline, see #46
+
+        # Expose tariff components without changing the price sensor's state.
+        zone_prices = {
+            "g11": {"peak": "price_peak"},
+            "g12": {"peak": "price_peak", "offpeak": "price_offpeak"},
+            "g12w": {"peak": "price_peak", "offpeak": "price_offpeak"},
+            "g12r": {"peak": "price_peak", "offpeak": "price_offpeak"},
+            "g12n": {"peak": "price_peak", "offpeak": "price_offpeak"},
+            "g13": {
+                "peak_1": "price_peak_1",
+                "peak_2": "price_peak_2",
+                "offpeak": "price_offpeak",
+            },
+        }.get(self._tariff)
+        if zone_prices:
+            settings = self._config.get(f"{self._tariff}_settings", {})
+            vat_rate = float(self._config.get(CONF_VAT_RATE, "0")) / 100
+            fixed_fee = float(self._config.get(CONF_NETWORK_FIXED_FEE, 0.0))
+            rates = {}
+            for zone, field in zone_prices.items():
+                energy_price = settings.get(field)
+                if energy_price is None:
+                    continue
+                price = self._calculate_total_price(energy_price, self._tariff)
+                if price is None:
+                    continue
+                rates[zone] = {
+                    "energy_net": float(energy_price),
+                    "distribution_net": price["variable_fee"],
+                    "energy_gross": float(energy_price) * (1 + vat_rate),
+                    "distribution_gross": price["variable_fee"] * (1 + vat_rate),
+                    "total_gross": price["total"],
+                }
+            if rates:
+                attrs["tariff_rates"] = {
+                    "unit": "PLN/kWh",
+                    "vat_rate": vat_rate * 100,
+                    "fixed_monthly_net": fixed_fee,
+                    "fixed_monthly_gross": fixed_fee * (1 + vat_rate),
+                    **rates,
+                }
 
         if self._tariff == "dynamic":
             if not self.coordinator.data:
