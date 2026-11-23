@@ -44,7 +44,8 @@ class _StubRestoreEntity:
 
 
 class _StubConfigFlow:
-    pass
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__()
 
 
 class _StubOptionsFlow:
@@ -72,6 +73,7 @@ ha_ce.ConfigFlow = _StubConfigFlow
 ha_ce.OptionsFlow = _StubOptionsFlow
 ha_ce.ConfigEntry = MagicMock
 sys.modules.setdefault("homeassistant.config_entries", ha_ce)
+ha_mod.config_entries = ha_ce
 
 ha_def = MagicMock()
 sys.modules.setdefault("homeassistant.data_entry_flow", ha_def)
