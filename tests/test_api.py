@@ -1,11 +1,17 @@
 """Tests for EnergyHubApiClient."""
 
+import ssl
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
 import pytest
 
-from custom_components.energy_hub_poland.api import EnergyHubApiClient
+from custom_components.energy_hub_poland.api import (
+    _CERTUM_DV_TLS_G2_R39_CA,
+    EnergyHubApiClient,
+    _build_datahub_ssl_context,
+)
 from custom_components.energy_hub_poland.const import API_URL
 
 
@@ -61,6 +67,26 @@ class TestAsyncGetPrices:
 
         result = await api_client.async_get_prices(date(2025, 1, 15))
         assert result is None
+
+    @pytest.mark.asyncio
+    async def test_ssl_error_returns_none(self, api_client, mock_session, caplog):
+        mock_session.get = AsyncMock(
+            side_effect=ssl.SSLCertVerificationError("cert failed")
+        )
+
+        result = await api_client.async_get_prices(date(2025, 1, 15))
+        assert result is None
+        assert "SSL/TLS certificate verification error" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_client_error_returns_none(self, api_client, mock_session, caplog):
+        mock_session.get = AsyncMock(
+            side_effect=aiohttp.ClientError("network failure")
+        )
+
+        result = await api_client.async_get_prices(date(2025, 1, 15))
+        assert result is None
+        assert "Network connection error to PGE DataHub" in caplog.text
 
     @pytest.mark.asyncio
     async def test_json_parse_error_returns_none(self, api_client, mock_session):
@@ -139,3 +165,77 @@ class TestMissingPrices:
         mock_session.get = AsyncMock(return_value=response)
 
         assert await api_client.async_get_prices(date.today()) == data
+
+
+class TestSslContext:
+    def test_build_datahub_ssl_context_returns_ssl_context(self):
+        ctx = _build_datahub_ssl_context()
+        assert isinstance(ctx, ssl.SSLContext)
+
+    def test_build_datahub_ssl_context_caching(self):
+        ctx1 = _build_datahub_ssl_context()
+        ctx2 = _build_datahub_ssl_context()
+        assert ctx1 is ctx2
+
+    def test_build_datahub_ssl_context_with_certifi(self):
+        with patch.dict("sys.modules", {"certifi": MagicMock(where=lambda: None)}):
+            with patch("ssl.create_default_context") as mock_create:
+                mock_ctx = MagicMock(spec=ssl.SSLContext)
+                mock_create.return_value = mock_ctx
+                with patch(
+                    "custom_components.energy_hub_poland.api._DATAHUB_SSL_CONTEXT",
+                    None,
+                ):
+                    ctx = _build_datahub_ssl_context()
+                    mock_create.assert_called_once()
+                    mock_ctx.load_verify_locations.assert_called_once_with(
+                        cadata=_CERTUM_DV_TLS_G2_R39_CA
+                    )
+                    assert ctx is mock_ctx
+
+    def test_build_datahub_ssl_context_without_certifi(self):
+        with patch.dict("sys.modules", {"certifi": None}):
+            with patch("ssl.create_default_context") as mock_create:
+                mock_ctx = MagicMock(spec=ssl.SSLContext)
+                mock_create.return_value = mock_ctx
+                with patch(
+                    "custom_components.energy_hub_poland.api._DATAHUB_SSL_CONTEXT",
+                    None,
+                ):
+                    ctx = _build_datahub_ssl_context()
+                    mock_create.assert_called_once_with()
+                    mock_ctx.load_verify_locations.assert_called_once_with(
+                        cadata=_CERTUM_DV_TLS_G2_R39_CA
+                    )
+                    assert ctx is mock_ctx
+
+    @pytest.mark.asyncio
+    async def test_api_client_passes_ssl_context_to_session_get(
+        self, mock_session
+    ):
+        response = AsyncMock()
+        response.json = AsyncMock(return_value=[])
+        response.raise_for_status = MagicMock()
+        mock_session.get = AsyncMock(return_value=response)
+
+        client = EnergyHubApiClient(mock_session)
+        await client.async_get_prices(date(2025, 1, 15))
+
+        ssl_arg = mock_session.get.call_args[1].get("ssl")
+        assert isinstance(ssl_arg, ssl.SSLContext)
+
+    @pytest.mark.asyncio
+    async def test_api_client_custom_ssl_context(self, mock_session):
+        custom_ctx = MagicMock(spec=ssl.SSLContext)
+        client = EnergyHubApiClient(mock_session, ssl_context=custom_ctx)
+
+        response = AsyncMock()
+        response.json = AsyncMock(return_value=[])
+        response.raise_for_status = MagicMock()
+        mock_session.get = AsyncMock(return_value=response)
+
+        await client.async_get_prices(date(2025, 1, 15))
+
+        ssl_arg = mock_session.get.call_args[1].get("ssl")
+        assert ssl_arg is custom_ctx
+

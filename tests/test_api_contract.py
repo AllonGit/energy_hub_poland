@@ -33,12 +33,12 @@ class TestApiContract:
     @pytest.fixture
     async def recent_date_with_data(self, api_client):
         """Find a recent date that has data available."""
-        for days_back in range(0, 7):  # Check last 7 days
+        for days_back in range(0, 30):  # Check last 30 days
             test_date = date.today() - timedelta(days=days_back)
             data = await api_client.async_get_prices(test_date)
             if data and len(data) > 0:
                 return test_date
-        pytest.skip("No data available in the last 7 days")
+        pytest.skip("No data available in the last 30 days")
 
     @pytest.mark.asyncio
     async def test_api_returns_data_for_recent_date(
@@ -120,7 +120,7 @@ class TestApiContract:
         assert -500 < price < 5000, msg
 
     @pytest.mark.asyncio
-    async def test_full_parse_roundtrip(self, api_client):
+    async def test_full_parse_roundtrip(self, api_client, recent_date_with_data):
         """End-to-end: fetch + parse should produce 24 hourly prices."""
         from unittest.mock import patch
         from zoneinfo import ZoneInfo
@@ -130,7 +130,7 @@ class TestApiContract:
             EnergyHubDataCoordinator,
         )
 
-        data = await api_client.async_get_prices(date.today())
+        data = await api_client.async_get_prices(recent_date_with_data)
         assert data is not None
 
         coord = EnergyHubDataCoordinator.__new__(EnergyHubDataCoordinator)
