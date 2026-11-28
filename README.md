@@ -240,6 +240,7 @@ Więcej szczegółów znajdziesz w dokumentacji:
 Projekt rozwija się dzięki zaangażowaniu społeczności. Szczególne podziękowania dla:
 
 * **[@abnvle](https://github.com/abnvle)** – za zaprojektowanie i wdrożenie kompleksowej architektury testowej (ponad 1500 linii kodu!). Twój wkład fundamentalnie podniósł stabilność i profesjonalizm tego repozytorium.
+* **[@mkowalczuk](https://github.com/mkowalczuk)** – za dodanie sensora statusu ceny dla całej rodziny taryf G12 (G12/G12w/G12r/G12n), centralizację stałych stref oraz możliwość konfiguracji taryf w trybie porównawczym (PR #55).
 
 ## ⚖️ Licencja i Nota Prawna
 Ten projekt jest licencjonowany na podstawie licencji **Apache 2.0**.

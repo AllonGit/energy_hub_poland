@@ -232,6 +232,7 @@ Discussions and feature requests: [Discussions](https://github.com/AllonGit/ener
 This project thrives thanks to community involvement. Special thanks to:
 
 * **[@abnvle](https://github.com/abnvle)** – for designing and implementing a comprehensive testing architecture (over 1,500 lines of code!). Your contribution has fundamentally improved the stability and professionalism of this repository.
+* **[@mkowalczuk](https://github.com/mkowalczuk)** – for adding the price status sensor for the entire G12 tariff family (G12/G12w/G12r/G12n), centralizing zone constants, and enabling configurable tariff selection in Comparison Mode (PR #55).
 
 ### ⚖️ License and Legal Notice
 This project is licensed under the **Apache 2.0** license.
