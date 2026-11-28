@@ -22,7 +22,9 @@ class _StubCoordinatorEntity:
 
 
 class _StubSensorEntity:
-    pass
+    @property
+    def options(self) -> list[str] | None:
+        return getattr(self, "_attr_options", None)
 
 
 class _StubBinarySensorEntity:
