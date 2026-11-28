@@ -172,9 +172,7 @@ class PSEApiClient:
 class EnergyHubApiClient:
     """API client for fetching energy prices from PSE/TGE (via PGE DataHub)."""
 
-    def __init__(
-        self, session: Any, ssl_context: ssl.SSLContext | None = None
-    ) -> None:
+    def __init__(self, session: Any, ssl_context: ssl.SSLContext | None = None) -> None:
         """Initialize the API client with an aiohttp session."""
         self._session = session
         self._ssl_context = ssl_context

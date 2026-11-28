@@ -23,7 +23,7 @@ Unikalną cechą jest **Tryb Porównania**, który analizuje Twoje zużycie i po
 
 ## 🌟 Możliwości i Tryby Pracy
 
-Integracja obsługuje pięć głównych trybów operacyjnych:
+Integracja obsługuje sześć głównych trybów operacyjnych:
 
 ### 1. 📉 Tryb Dynamiczny (RCE)
 Pobiera godzinowe stawki rynkowe bezpośrednio z PSE/TGE.
@@ -49,13 +49,20 @@ Rozszerzona taryfa dwustrefowa, uwzględniająca polski kalendarz świąt.
 Taryfa dwustrefowa z tanią strefą codziennie w godzinach **22:00–7:00** i **13:00–16:00**.
 * Używa tego samego harmonogramu przez cały tydzień, również w weekendy i święta.
 * Pozwala skonfigurować stawki szczytową i pozaszczytową oraz zmienną opłatę sieciową.
+* Sensor statusu taryfy (`peak/offpeak`) do automatyzacji.
 
-### 5. 📊 Tryb Porównania (Eksperymentalny)
+### 5. 🌑 Tryb G12n
+Taryfa dwustrefowa z tanią strefą w godzinach **1:00–5:00** i **13:00–15:00** w dni robocze (weekendy i święta całkowicie pozaszczytowe).
+* Uwzględnia polski kalendarz świąt ustawowych.
+* Sensor statusu taryfy (`peak/offpeak`) do automatyzacji.
+
+### 6. 📊 Tryb Porównania (Eksperymentalny)
 Najpotężniejsza funkcja integracji.
 * Oblicza koszty zużycia energii dla **wszystkich obsługiwanych taryf jednocześnie** w czasie rzeczywistym.
 * Uwzględnia zdefiniowane opłaty sieciowe, pozwalając na realne porównanie kosztów "z rachunku".
 * Wskazuje potencjalne oszczędności przy zmianie taryfy.
-* Wymaga podłączenia licznika energii (encyja `kWh`, typ `total_increasing`).
+* Wymaga podłączenia licznika energii (encja `kWh`, typ `total_increasing`).
+* Możliwość wyboru aktywnych taryf do porównania w opcjach integracji.
 
 ---
 
@@ -79,12 +86,15 @@ Najpotężniejsza funkcja integracji.
 
 ### 🆕 Co nowego
 
-Najnowsze aktualizacje dodają do integracji kilka praktycznych sensorów dla trybu dynamicznego:
-* **Status ceny** – klasyfikuje bieżącą cenę jako tania, normalna lub droga.
+Najnowsze aktualizacje rozszerzają integrację o:
+
+* **Sensor statusu ceny dla taryf G12/G12w/G12r/G12n** – nowe sensory informują o aktywnej strefie taryfy (`peak` / `offpeak`), aktualizowane co godzinę na pełnej godzinie.
+* **Wybór taryf w trybie porównawczym** – w opcjach integracji można teraz włączać i wyłączać poszczególne taryfy do porównania.
+* **Sensor statusu ceny w trybie dynamicznym** – klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`.
 * **Najlepsza godzina uruchomienia** – wskazuje najkorzystniejszą godzinę do uruchomienia obciążenia.
 * **Potencjał oszczędności** – pokazuje, ile można zaoszczędzić, przesuwając zużycie na najtańszą godzinę.
 
-Dodatkowo poprawiono stabilność logiki sensorów i rozszerzono pokrycie testami regresyjnymi.
+Dodatkowo poprawiono stabilność logiki sensorów, usunięto duplikację kodu i rozszerzono pokrycie testami regresyjnymi.
 
 ---
 

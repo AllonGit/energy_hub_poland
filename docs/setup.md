@@ -9,8 +9,8 @@ Po pomyślnej instalacji przez HACS, wykonaj poniższe kroki, aby w pełni wykor
 
 ## 2. Wybór trybu pracy
 - **Taryfa Dynamiczna (RCE):** Pobiera ceny rynkowe energii publikowane przez PSE. Idealne, jeśli rozliczasz się dynamicznie.
-- **Wirtualne G12/G12w/G12r:** Pozwala na wpisanie stałych stawek Twojego sprzedawcy; G12r ma tanią strefę codziennie od 22:00 do 7:00 oraz od 13:00 do 16:00.
-- **Tryb Porównawczy:** Wyświetla dane z taryfy dynamicznej oraz Twoich stawek stałych, pokazując potencjalne oszczędności.
+- **Wirtualne G12/G12w/G12r/G12n:** Pozwala na wpisanie stałych stawek Twojego sprzedawcy; G12r ma tanią strefę codziennie od 22:00 do 7:00 oraz od 13:00 do 16:00; G12n ma tanią strefę od 1:00 do 5:00 i od 13:00 do 15:00 w dni robocze (weekendy i święta całkowicie pozaszczytowe).
+- **Tryb Porównawczy:** Wyświetla dane z taryfy dynamicznej oraz Twoich stawek stałych, pokazując potencjalne oszczędności. W opcjach integracji możesz wybrać, które taryfy mają być uwzględnione w porównaniu.
 
 ## 3. Integracja z Panelem Energia
 Aby widzieć koszty w panelu Energy:
@@ -20,7 +20,7 @@ Aby widzieć koszty w panelu Energy:
 
 ## 4. Sensory statusu ceny i optymalizacji
 Integracja udostępnia praktyczne sensory, które ułatwiają automatyzacje:
-- `price_status` – w trybie dynamicznym (RCE) klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`; w taryfach strefowych G12 i G12w wskazuje aktywną strefę: `peak` (strefa szczytowa) lub `offpeak` (strefa pozaszczytowa).
+- `price_status` – w trybie dynamicznym (RCE) klasyfikuje bieżącą cenę jako `cheap`, `normal` lub `expensive`; w taryfach strefowych G12, G12w, G12r i G12n wskazuje aktywną strefę: `peak` (strefa szczytowa) lub `offpeak` (strefa pozaszczytowa). Wartość aktualizowana automatycznie **co pełną godzinę**, bez konieczności restartowania HA.
 - `best_usage_hour` – wskazuje najkorzystniejszą godzinę uruchomienia obciążenia (tryb dynamiczny).
 - `savings_potential` – pokazuje przewidywane oszczędności przy przesunięciu zużycia na najtańszą godzinę (tryb dynamiczny).
 

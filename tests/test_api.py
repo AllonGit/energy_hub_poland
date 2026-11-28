@@ -80,9 +80,7 @@ class TestAsyncGetPrices:
 
     @pytest.mark.asyncio
     async def test_client_error_returns_none(self, api_client, mock_session, caplog):
-        mock_session.get = AsyncMock(
-            side_effect=aiohttp.ClientError("network failure")
-        )
+        mock_session.get = AsyncMock(side_effect=aiohttp.ClientError("network failure"))
 
         result = await api_client.async_get_prices(date(2025, 1, 15))
         assert result is None
@@ -210,9 +208,7 @@ class TestSslContext:
                     assert ctx is mock_ctx
 
     @pytest.mark.asyncio
-    async def test_api_client_passes_ssl_context_to_session_get(
-        self, mock_session
-    ):
+    async def test_api_client_passes_ssl_context_to_session_get(self, mock_session):
         response = AsyncMock()
         response.json = AsyncMock(return_value=[])
         response.raise_for_status = MagicMock()
@@ -238,4 +234,3 @@ class TestSslContext:
 
         ssl_arg = mock_session.get.call_args[1].get("ssl")
         assert ssl_arg is custom_ctx
-

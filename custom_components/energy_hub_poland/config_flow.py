@@ -841,7 +841,7 @@ class EnergyHubPolandOptionsFlowHandler(config_entries.OptionsFlow):
         if mode == MODE_COMPARISON:
             current_enabled = config.get(
                 CONF_ENABLED_TARIFFS,
-                ["dynamic", "g11", "g12", "g12w", "g12r", "g13"],
+                ["dynamic", "g11", "g12", "g12w", "g12r", "g12n", "g13"],
             )
             schema[
                 vol.Required(

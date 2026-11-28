@@ -23,7 +23,7 @@ A unique feature is the **Comparison Mode**, which analyzes your consumption pat
 
 ## 🌟 Features and Operation Modes
 
-The integration supports five main operational modes:
+The integration supports six main operational modes:
 
 ### 1. 📉 Dynamic Mode (RCE)
 Fetches hourly market rates directly from PSE/TGE (Polish Power Exchange).
@@ -47,23 +47,33 @@ Extended ToU tariff that accounts for the Polish holiday calendar.
 Two-zone tariff with off-peak hours every day from **22:00–7:00** and **13:00–16:00**.
 * Uses the same schedule throughout the week, including weekends and holidays.
 * Allows configuration of peak and off-peak rates and the variable network fee.
+* Tariff status sensor (`peak/offpeak` zone) for automations.
 
-### 5. 📊 Comparison Mode (Experimental)
+### 5. 🌑 G12n Mode
+Two-zone tariff with off-peak hours from **1:00–5:00** and **13:00–15:00** on working days (weekends and holidays are fully off-peak).
+* Accounts for the Polish statutory holiday calendar.
+* Tariff status sensor (`peak/offpeak` zone) for automations.
+
+### 6. 📊 Comparison Mode (Experimental)
 The integration's most powerful feature.
 * Calculates energy costs for **all supported tariffs simultaneously** in real-time.
 * Indicates potential savings if you were to switch tariffs.
 * Requires a connected energy meter sensor (kWh, `total_increasing` type).
+* Tariffs included in the comparison can be configured in the integration options.
 
 ---
 
 ### 🆕 What's New
 
-Recent updates add several practical sensors for Dynamic Mode:
-* **Price status** – classifies the current price as cheap, normal, or expensive.
+Recent updates add:
+
+* **Price status sensor for G12/G12w/G12r/G12n tariffs** – new sensors report the active tariff zone (`peak` / `offpeak`), updated every hour on the hour.
+* **Configurable tariffs in Comparison Mode** – you can now enable or disable individual tariffs in the integration options.
+* **Price status sensor for Dynamic Mode** – classifies the current price as `cheap`, `normal`, or `expensive`.
 * **Best usage hour** – suggests the most favorable hour to run a load.
 * **Savings potential** – shows how much can be saved by shifting usage to the cheapest hour.
 
-The sensor logic was also stabilized and expanded with regression tests.
+The sensor logic was also refactored to remove code duplication and expanded with regression tests.
 
 ---
 
